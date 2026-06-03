@@ -30,10 +30,12 @@ add_library(libecs STATIC)
 
 set(SOURCES
         "src/memory/LinearAllocator.cpp"
+        "src/memory/PoolAllocator.cpp"
 )
 
 set(HEADERS
         "include/libecs/memory/LinearAllocator.hpp"
+        "include/libecs/memory/PoolAllocator.hpp"
 )
 
 target_sources(libecs PRIVATE

@@ -1,6 +1,6 @@
 //
 // Created by genin on 03/06/2026.
-// Path: include/memory/LinearAllocator.hpp
+// Path: include/libecs/memory/LinearAllocator.hpp
 //
 
 #pragma once
@@ -28,4 +28,4 @@ namespace libecs::memory
         std::size_t offset_ = 0;
         std::size_t totalSize_ = 0;
     };
-} // memory
+} // libecs::memory
