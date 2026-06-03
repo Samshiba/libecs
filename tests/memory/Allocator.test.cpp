@@ -6,7 +6,7 @@
 
 #include <doctest.h>
 #include <libecs/memory/LinearAllocator.hpp>
-#include  <libecs/memory/PoolAllocator.hpp>
+#include <libecs/memory/PoolAllocator.hpp>
 
 TEST_CASE("LinearAllocator basic functionality")
 {

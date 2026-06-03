@@ -3,7 +3,9 @@
 project(Tests)
 
 add_executable(Tests
-        "memory/Allocator.test.cpp")
+        "memory/Allocator.test.cpp"
+        "core/Entity.test.cpp"
+)
 
 target_include_directories(Tests
         PRIVATE
@@ -12,4 +14,4 @@ target_include_directories(Tests
 
 target_link_libraries(Tests PRIVATE libecs)
 
-add_test(NAME LibecsMemoryTests COMMAND Tests)
+add_test(NAME LibecsTests COMMAND Tests)

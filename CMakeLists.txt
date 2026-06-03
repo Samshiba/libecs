@@ -36,6 +36,7 @@ set(SOURCES
 set(HEADERS
         "include/libecs/memory/LinearAllocator.hpp"
         "include/libecs/memory/PoolAllocator.hpp"
+        "include/libecs/core/Entity.hpp"
 )
 
 target_sources(libecs PRIVATE
