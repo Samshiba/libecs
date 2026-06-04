@@ -5,6 +5,7 @@ project(Tests)
 add_executable(Tests
         "memory/Allocator.test.cpp"
         "core/Entity.test.cpp"
+        "core/SparseSet.test.cpp"
 )
 
 target_include_directories(Tests

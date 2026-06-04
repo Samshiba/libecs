@@ -37,6 +37,7 @@ set(HEADERS
         "include/libecs/memory/LinearAllocator.hpp"
         "include/libecs/memory/PoolAllocator.hpp"
         "include/libecs/core/Entity.hpp"
+        "include/libecs/core/SparseSet.hpp"
 )
 
 target_sources(libecs PRIVATE
@@ -79,7 +80,7 @@ target_compile_definitions(libecs PUBLIC
         $<$<PLATFORM_ID:Darwin>:LIBECS_PLATFORM_MACOS>
 
         # Build Type
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:Profile>>:NDEBUG>
+        $<$<OR:$<CONFIG:Release>,$<CONFIG:Profile>>:NODEBUG>
         $<$<CONFIG:Debug>:LIBECS_DEBUG_BUILD LIBECS_ENABLE_ASSERTS LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Profile>:LIBECS_PROFILE_BUILD LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Release>:LIBECS_RELEASE_BUILD>
