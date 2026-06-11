@@ -10,7 +10,7 @@
 namespace libecs::core
 {
     using Entity = uint32_t;
-    constexpr Entity INVALID_ENTITY = 0;
+    inline constexpr std::uint32_t NULL_INDEX = 0xFFFFFF;
 
     std::uint32_t GetEntityIndex(Entity entity);
     std::uint32_t GetEntityVersion(Entity entity);

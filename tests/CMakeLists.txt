@@ -6,6 +6,8 @@ add_executable(Tests
         "memory/Allocator.test.cpp"
         "core/Entity.test.cpp"
         "core/SparseSet.test.cpp"
+        "core/registry/TypeId.test.cpp"
+        "core/registry/Registry.test.cpp"
 )
 
 target_include_directories(Tests

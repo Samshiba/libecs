@@ -10,22 +10,26 @@
 #include <memory>
 #include <cassert>
 
+#include <libecs/core/registry/IPool.hpp>
+
 #include "Entity.hpp"
 
 namespace libecs::core
 {
     template <typename Component>
-    class SparseSet
+    class SparseSet : public registry::IPool
     {
     public:
         SparseSet() = default;
-        ~SparseSet() = default;
+        ~SparseSet() override = default;
 
         void Insert(Entity entity, Component component);
         void Remove(Entity entity);
 
         [[nodiscard]] bool Contains(Entity entity) const;
         Component& Get(Entity entity);
+
+        void EntityDestroyed(Entity entity) override;
 
     private:
         std::vector<Component> denseComponents_;
@@ -107,6 +111,13 @@ namespace libecs::core
         std::size_t offset = entityIndex % 4096;
 
         return denseComponents_[(*sparse_[pageIndex])[offset]];
+    }
+
+    template <typename Component>
+    void SparseSet<Component>::EntityDestroyed(Entity entity)
+    {
+        if (Contains(entity))
+            Remove(entity);
     }
 }
 

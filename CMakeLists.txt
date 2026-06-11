@@ -31,6 +31,7 @@ add_library(libecs STATIC)
 set(SOURCES
         "src/memory/LinearAllocator.cpp"
         "src/memory/PoolAllocator.cpp"
+        "src/core/Registry.cpp"
 )
 
 set(HEADERS
@@ -38,6 +39,9 @@ set(HEADERS
         "include/libecs/memory/PoolAllocator.hpp"
         "include/libecs/core/Entity.hpp"
         "include/libecs/core/SparseSet.hpp"
+        "include/libecs/core/registry/TypeId.hpp"
+        "include/libecs/core/registry/IPool.hpp"
+        "include/libecs/core/registry/Registry.hpp"
 )
 
 target_sources(libecs PRIVATE
