@@ -84,7 +84,6 @@ target_compile_definitions(libecs PUBLIC
         $<$<PLATFORM_ID:Darwin>:LIBECS_PLATFORM_MACOS>
 
         # Build Type
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:Profile>>:NODEBUG>
         $<$<CONFIG:Debug>:LIBECS_DEBUG_BUILD LIBECS_ENABLE_ASSERTS LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Profile>:LIBECS_PROFILE_BUILD LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Release>:LIBECS_RELEASE_BUILD>

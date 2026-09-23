@@ -45,9 +45,7 @@ namespace libecs::core::registry
     template <typename Component, typename... Args>
     Component& Registry::EmplaceComponent(Entity entity, Args&&... args)
     {
-#ifndef NODEBUG
         assert(IsEntityValid(entity));
-#endif
 
         ComponentTypeId typeId = GetTypeId<Component>();
 
@@ -73,9 +71,8 @@ namespace libecs::core::registry
     template <typename Component>
     void Registry::RemoveComponent(Entity entity)
     {
-#ifndef NODEBUG
         assert(IsEntityValid(entity));
-#endif
+
         ComponentTypeId typeId = GetTypeId<Component>();
 
         if (componentPools_.size() <= typeId || componentPools_[typeId] ==
@@ -98,9 +95,8 @@ namespace libecs::core::registry
     template <typename Component>
     bool Registry::HasComponent(Entity entity) const
     {
-#ifndef NODEBUG
         assert(IsEntityValid(entity));
-#endif
+
         ComponentTypeId typeId = GetTypeId<Component>();
 
         if (componentPools_.size() <= typeId || componentPools_[typeId] ==
