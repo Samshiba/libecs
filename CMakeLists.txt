@@ -42,6 +42,7 @@ set(HEADERS
         "include/libecs/core/registry/TypeId.hpp"
         "include/libecs/core/registry/IPool.hpp"
         "include/libecs/core/registry/Registry.hpp"
+        "include/libecs/core/view/View.hpp"
 )
 
 target_sources(libecs PRIVATE

@@ -168,7 +168,8 @@ TEST_SUITE("Registry test suite")
         CHECK(registry.TryGetComponent<int>(entity1) == nullptr);
 
         const auto& constRegistry = registry;
-        CHECK(constRegistry.GetComponent<PositionComponent>(entity1).x == 99.0f);
+        CHECK(constRegistry.GetComponent<PositionComponent>(entity1).x == 99.0f)
+        ;
         CHECK(constRegistry.TryGetComponent<int>(entity1) == nullptr);
     }
 
@@ -190,5 +191,64 @@ TEST_SUITE("Registry test suite")
 
         CHECK(registry.HasComponent<PositionComponent>(entity1));
         CHECK(!registry.HasComponent<PositionComponent>(entity2));
+    }
+
+    TEST_CASE("View")
+    {
+        struct VelocityComponent
+        {
+            float vx;
+            float vy;
+
+            VelocityComponent(float vx, float vy)
+                : vx(vx), vy(vy)
+            {
+            }
+
+            bool operator==(const VelocityComponent&) const = default;
+        };
+
+        auto registry = libecs::core::registry::Registry();
+
+        libecs::core::Entity entity1 = registry.CreateEntity();
+        libecs::core::Entity entity2 = registry.CreateEntity();
+        libecs::core::Entity entity3 = registry.CreateEntity();
+        libecs::core::Entity entity4 = registry.CreateEntity();
+
+        registry.EmplaceComponent<PositionComponent>(entity1, 10.0f, 20.0f);
+        registry.EmplaceComponent<PositionComponent>(entity2, 30.0f, 40.0f);
+        registry.EmplaceComponent<PositionComponent>(entity3, 50.0f, 60.0f);
+
+        registry.EmplaceComponent<VelocityComponent>(entity1, 1.0f, 2.0f);
+        registry.EmplaceComponent<VelocityComponent>(entity2, 5.0f, 6.0f);
+        registry.EmplaceComponent<VelocityComponent>(entity4, 7.0f, 8.0f);
+
+        auto view = registry.GetView<PositionComponent>();
+        CHECK(view.Get<PositionComponent>(entity1) == PositionComponent{10.0f,
+              20.0f});
+        CHECK(view.Get<PositionComponent>(entity2) == PositionComponent{30.0f,
+              40.0f});
+        CHECK(view.Get<PositionComponent>(entity3) == PositionComponent{50.0f,
+              60.0f});
+
+        registry.RemoveComponent<VelocityComponent>(entity2);
+        auto view2 = registry.GetView<VelocityComponent>();
+        CHECK(view2.Get<VelocityComponent>(entity1) == VelocityComponent{1.0f,
+              2.0f});
+        CHECK(view2.Get<VelocityComponent>(entity4) == VelocityComponent{7.0f,
+              8.0f});
+
+        std::vector<libecs::core::Entity> visitedEntities;
+        view2.Each([&visitedEntities](libecs::core::Entity entity,
+                                      VelocityComponent& vel) {
+            visitedEntities.push_back(entity);
+            vel.vx += 10.0f;
+            vel.vy -= 20.0f;
+        });
+
+        CHECK(visitedEntities.size() == 2);
+        CHECK(visitedEntities[0] == entity1);
+        CHECK(view2.Get<VelocityComponent>(entity1) == VelocityComponent{11.0f,
+              -18.0f});
     }
 }

@@ -8,6 +8,7 @@ add_executable(Tests
         "core/SparseSet.test.cpp"
         "core/registry/TypeId.test.cpp"
         "core/registry/Registry.test.cpp"
+        "core/view/View.test.cpp"
 )
 
 target_include_directories(Tests
