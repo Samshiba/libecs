@@ -17,4 +17,6 @@ target_include_directories(Tests
 
 target_link_libraries(Tests PRIVATE libecs)
 
+target_compile_options(Tests PRIVATE ${LIBECS_WARNINGS})
+
 add_test(NAME LibecsTests COMMAND Tests)

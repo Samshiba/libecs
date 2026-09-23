@@ -35,6 +35,8 @@ namespace libecs::core
 
         void EntityDestroyed(Entity entity) override;
 
+        [[nodiscard]] std::size_t Size() const;
+
     private:
         std::vector<Component> denseComponents_;
         std::vector<Entity> denseEntities_;
@@ -44,33 +46,7 @@ namespace libecs::core
     template <typename Component>
     void SparseSet<Component>::Insert(Entity entity, Component component)
     {
-        if (Contains(entity))
-        {
-            Get(entity) = std::move(component);
-            return;
-        }
-
-        denseComponents_.push_back(component);
-        denseEntities_.push_back(entity);
-        std::size_t denseIndex = denseComponents_.size() - 1;
-
-        uint32_t entityIndex = GetEntityIndex(entity);
-        std::size_t pageIndex = entityIndex / 4096;
-        std::size_t offset = entityIndex % 4096;
-
-        //Resize only if the pageIndex is greater than the current size of sparse_
-        if (pageIndex >= sparse_.size())
-        {
-            sparse_.resize(pageIndex + 1);
-        }
-
-        // Allocate a new page if it doesn't exist
-        if (sparse_[pageIndex] == nullptr)
-        {
-            sparse_[pageIndex] = std::make_unique<std::array<size_t, 4096> >();
-        }
-
-        (*sparse_[pageIndex])[offset] = denseIndex;
+        Emplace(entity, std::move(component));
     }
 
     template <typename Component>
@@ -167,5 +143,11 @@ namespace libecs::core
     {
         if (Contains(entity))
             Remove(entity);
+    }
+
+    template <typename Component>
+    std::size_t SparseSet<Component>::Size() const
+    {
+        return denseComponents_.size();
     }
 }
