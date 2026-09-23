@@ -13,7 +13,7 @@ add_executable(Tests
 
 target_include_directories(Tests
         PRIVATE
-        "${CMAKE_SOURCE_DIR}/vendor/doctest"
+        "${PROJECT_SOURCE_DIR}/vendor/doctest"
 )
 
 target_link_libraries(Tests PRIVATE libecs)

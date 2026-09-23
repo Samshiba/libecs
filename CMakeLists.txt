@@ -1,25 +1,29 @@
 # CMakeList.txt : Top-level CMake project file
 
 cmake_minimum_required(VERSION 3.28)
-project(libecs VERSION 1.0.0.0 LANGUAGES C CXX)
+project(libecs VERSION 0.1.0 LANGUAGES C CXX)
 
 # Global settings
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+if (PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+endif ()
 
 # Set up Build Types
-get_property(multi GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if (multi)
-    set(CMAKE_CONFIGURATION_TYPES "Debug;Profile;Release" CACHE STRING "" FORCE)
-else ()
-    if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-        set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
-        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Profile" "Release")
+if (PROJECT_IS_TOP_LEVEL)
+    get_property(multi GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if (multi)
+        set(CMAKE_CONFIGURATION_TYPES "Debug;Profile;Release" CACHE STRING "" FORCE)
+    else ()
+        if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+            set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+            set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Profile" "Release")
+        endif ()
     endif ()
 endif ()
 
@@ -86,19 +90,13 @@ target_compile_definitions(libecs PUBLIC
         $<$<PLATFORM_ID:Darwin>:LIBECS_PLATFORM_MACOS>
 
         # Build Type
-        $<$<CONFIG:Profile>:NDEBUG>
         $<$<CONFIG:Debug>:LIBECS_DEBUG_BUILD LIBECS_ENABLE_ASSERTS LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Profile>:LIBECS_PROFILE_BUILD LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Release>:LIBECS_RELEASE_BUILD>
-
-        # SPDLOG
-        $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE>
-        $<$<CONFIG:Profile>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO>
-        $<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF>
 )
 
 # Testing
-option(LIBECS_BUILD_TESTS "Build libecs tests" ON)
+option(LIBECS_BUILD_TESTS "Build libecs tests" ${PROJECT_IS_TOP_LEVEL})
 
 if (LIBECS_BUILD_TESTS)
     enable_testing()
