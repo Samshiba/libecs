@@ -10,12 +10,7 @@
 
 #include <libecs/memory/PoolAllocator.hpp>
 
-#ifdef LIBECS_PLATFORM_WINDOWS
-#include <windows.h>
-#include <memoryapi.h>
-#else
-#error "PoolAllocator is currently only implemented for Windows (mmap needed for POSIX)."
-#endif
+#include "VirtualMemory.hpp"
 
 namespace libecs::memory
 {
@@ -34,9 +29,7 @@ namespace libecs::memory
                 "Block size must be a multiple of chunk size and at least as large.");
         }
 
-        start_ = VirtualAlloc(nullptr, blockSize_,
-                              MEM_RESERVE | MEM_COMMIT,
-                              PAGE_READWRITE);
+        start_ = detail::AllocatePages(blockSize_);
         if (!start_)
         {
             throw std::bad_alloc();
@@ -62,10 +55,7 @@ namespace libecs::memory
 
     PoolAllocator::~PoolAllocator()
     {
-        if (start_)
-        {
-            VirtualFree(start_, 0, MEM_RELEASE);
-        }
+        detail::FreePages(start_, blockSize_);
     }
 
     void* PoolAllocator::Allocate()
