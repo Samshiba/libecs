@@ -23,7 +23,6 @@ namespace libecs::memory
 
         if (!start_)
         {
-            std::cerr << "Failed to reserve memory for LinearAllocator.\n";
             throw std::bad_alloc();
         }
     }
@@ -46,8 +45,7 @@ namespace libecs::memory
 
         if (!alignedPtr)
         {
-            std::cerr << "LinearAllocator out of memory.\n";
-            return nullptr;
+            throw std::bad_alloc();
         }
 
         offset_ = totalSize_ - spaceLeft + size;

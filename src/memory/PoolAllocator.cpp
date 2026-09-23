@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <libecs/memory/PoolAllocator.hpp>
+#include <stdexcept>
 
 #ifdef LIBECS_PLATFORM_WINDOWS
 #include <windows.h>
@@ -35,7 +36,6 @@ namespace libecs::memory
                               PAGE_READWRITE);
         if (!start_)
         {
-            std::cerr << "Failed to reserve memory for PoolAllocator.\n";
             throw std::bad_alloc();
         }
 
@@ -69,8 +69,7 @@ namespace libecs::memory
     {
         if (!head_)
         {
-            std::cerr << "PoolAllocator out of memory.\n";
-            return nullptr;
+            throw std::bad_alloc();
         }
 
         auto chunk = reinterpret_cast<Chunk*>(head_);
@@ -89,9 +88,8 @@ namespace libecs::memory
         if (end < start || end >= start + blockSize_ || (end - start) %
             chunkSize_ != 0)
         {
-            std::cerr <<
-                "Pointer out of bounds for PoolAllocator deallocation.\n";
-            return;
+            throw std::invalid_argument(
+                "Pointer out of bounds for PoolAllocator deallocation.");
         }
 
         auto* chunk = reinterpret_cast<Chunk*>(ptr);

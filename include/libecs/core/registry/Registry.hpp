@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <vector>
-#include <stdexcept>
+#include <cassert>
 
 #include <libecs/core/Entity.hpp>
 #include <libecs/core/registry/IPool.hpp>
