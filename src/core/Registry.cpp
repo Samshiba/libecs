@@ -45,7 +45,14 @@ namespace libecs::core::registry
         entities_[index] = deadEntity;
         nextFreeIndex_ = index;
 
-        // TODO destroy components associated with this entity
+        // Destroy all components
+        for (auto const& pool : componentPools_)
+        {
+            if (pool)
+            {
+                pool->EntityDestroyed(entity);
+            }
+        }
         return true;
     }
 
