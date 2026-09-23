@@ -3,7 +3,7 @@
 // Path: src/memory/PoolAllocator.cpp
 //
 
-#include <iostream>
+#include <cassert>
 #include <libecs/memory/PoolAllocator.hpp>
 #include <stdexcept>
 
@@ -69,7 +69,7 @@ namespace libecs::memory
     {
         if (!head_)
         {
-            throw std::bad_alloc();
+            return nullptr; // No more free space
         }
 
         auto chunk = reinterpret_cast<Chunk*>(head_);
@@ -85,12 +85,8 @@ namespace libecs::memory
         auto start = reinterpret_cast<std::uintptr_t>(start_);
         auto end = reinterpret_cast<std::uintptr_t>(ptr);
 
-        if (end < start || end >= start + blockSize_ || (end - start) %
-            chunkSize_ != 0)
-        {
-            throw std::invalid_argument(
-                "Pointer out of bounds for PoolAllocator deallocation.");
-        }
+        assert(end >= start && end < start + blockSize_ && (end - start) %
+            chunkSize_ == 0);
 
         auto* chunk = reinterpret_cast<Chunk*>(ptr);
         chunk->next = reinterpret_cast<Chunk*>(head_);

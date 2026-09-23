@@ -58,7 +58,7 @@ target_include_directories(libecs
 )
 
 # Compile Options
-set(LIBECS_WARNINGS
+set(LIBECS_COMPILE_OPTIONS
         # --- MSVC Config ---
         $<$<CXX_COMPILER_ID:MSVC>:
         $<$<CONFIG:Debug>:/Od /Zi /RTC1 /MDd>

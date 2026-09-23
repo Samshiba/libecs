@@ -28,11 +28,11 @@ TEST_SUITE("Registry test suite")
         libecs::core::Entity entity1 = registry.CreateEntity();
         libecs::core::Entity entity2 = registry.CreateEntity();
 
-        CHECK_EQ(libecs::core::GetEntityIndex(entity1), (uint32_t)0);
-        CHECK_EQ(libecs::core::GetEntityVersion(entity1), (uint32_t)00);
+        CHECK_EQ(libecs::core::GetEntityIndex(entity1), 0u);
+        CHECK_EQ(libecs::core::GetEntityVersion(entity1), 0u);
 
-        CHECK_EQ(libecs::core::GetEntityIndex(entity2), (uint32_t)01);
-        CHECK_EQ(libecs::core::GetEntityVersion(entity2), (uint32_t)00);
+        CHECK_EQ(libecs::core::GetEntityIndex(entity2), 1u);
+        CHECK_EQ(libecs::core::GetEntityVersion(entity2), 0u);
 
         CHECK(registry.IsEntityValid(entity1));
         CHECK(registry.IsEntityValid(entity2));
@@ -61,11 +61,11 @@ TEST_SUITE("Registry test suite")
         libecs::core::Entity entity5 = registry.CreateEntity();
         libecs::core::Entity entity6 = registry.CreateEntity();
 
-        CHECK_EQ(libecs::core::GetEntityIndex(entity5), (uint32_t)02);
-        CHECK_EQ(libecs::core::GetEntityVersion(entity5), (uint32_t)01);
+        CHECK_EQ(libecs::core::GetEntityIndex(entity5), 2u);
+        CHECK_EQ(libecs::core::GetEntityVersion(entity5), 1u);
 
-        CHECK_EQ(libecs::core::GetEntityIndex(entity6), (uint32_t)01);
-        CHECK_EQ(libecs::core::GetEntityVersion(entity6), (uint32_t)01);
+        CHECK_EQ(libecs::core::GetEntityIndex(entity6), 1u);
+        CHECK_EQ(libecs::core::GetEntityVersion(entity6), 1u);
     }
 
     TEST_CASE("Destroy with components")

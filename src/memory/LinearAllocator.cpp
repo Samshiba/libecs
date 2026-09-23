@@ -4,6 +4,7 @@
 //
 
 #include <iostream>
+#include <cassert>
 #include <libecs/memory/LinearAllocator.hpp>
 
 #ifdef LIBECS_PLATFORM_WINDOWS
@@ -45,7 +46,7 @@ namespace libecs::memory
 
         if (!alignedPtr)
         {
-            throw std::bad_alloc();
+            return nullptr; // No more free space
         }
 
         offset_ = totalSize_ - spaceLeft + size;
