@@ -9,6 +9,7 @@
 #include <array>
 #include <memory>
 #include <cassert>
+#include <utility>
 
 #include <libecs/core/registry/IPool.hpp>
 
@@ -40,6 +41,12 @@ namespace libecs::core
     template <typename Component>
     void SparseSet<Component>::Insert(Entity entity, Component component)
     {
+        if (Contains(entity))
+        {
+            Get(entity) = std::move(component);
+            return;
+        }
+
         denseComponents_.push_back(component);
         denseEntities_.push_back(entity);
         std::size_t denseIndex = denseComponents_.size() - 1;
@@ -129,4 +136,3 @@ namespace libecs::core
             Remove(entity);
     }
 }
-

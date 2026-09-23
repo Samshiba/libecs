@@ -55,6 +55,25 @@ TEST_SUITE("SparseSet Core Mechanics")
         CHECK(ints.Get(e_medium) == 300);
     }
 
+    TEST_CASE("Inserting multiple components for the same entity")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e1 = libecs::core::CreateEntity(1, 0);
+        libecs::core::Entity e2 = libecs::core::CreateEntity(2, 0);
+
+        ints.Insert(e1, 100);
+        CHECK(ints.Get(e1) == 100);
+
+        // Insert again with a different value
+        ints.Insert(e1, 200);
+        CHECK(ints.Get(e1) == 200);
+
+        ints.Insert(e2, 300);
+        ints.Remove(e1);
+        CHECK(ints.Contains(e1) == false);
+        CHECK(ints.Get(e2) == 300);
+    }
+
     TEST_CASE("Swap and Pop logic (Removal)")
     {
         libecs::core::SparseSet<int> ints;

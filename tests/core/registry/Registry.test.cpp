@@ -89,6 +89,26 @@ TEST_SUITE("Registry test suite")
         CHECK(!registry.HasComponent<PositionComponent>(entity1));
     }
 
+    TEST_CASE("Replacing a component")
+    {
+        auto registry = libecs::core::registry::Registry();
+
+        libecs::core::Entity entity1 = registry.CreateEntity();
+        libecs::core::Entity entity2 = registry.CreateEntity();
+
+        registry.EmplaceComponent<PositionComponent>(entity1, 10.0f, 20.0f);
+        CHECK(registry.EmplaceComponent<PositionComponent>(entity1, 30.0f, 40.0f) ==
+              PositionComponent{30.0f, 40.0f});
+        CHECK(registry.EmplaceComponent<PositionComponent>(entity2, 50.0f, 60.0f) ==
+              PositionComponent{50.0f, 60.0f});
+
+        CHECK(registry.HasComponent<PositionComponent>(entity1));
+
+        registry.RemoveComponent<PositionComponent>(entity1);
+        CHECK(!registry.HasComponent<PositionComponent>(entity1));
+        CHECK(registry.HasComponent<PositionComponent>(entity2));
+    }
+
     TEST_CASE("Removing uncreated component type")
     {
         auto registry = libecs::core::registry::Registry();
