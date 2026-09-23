@@ -3,8 +3,9 @@
 // Path: src/memory/LinearAllocator.cpp
 //
 
-#include <iostream>
-#include <cassert>
+#include <memory>
+#include <new>
+
 #include <libecs/memory/LinearAllocator.hpp>
 
 #ifdef LIBECS_PLATFORM_WINDOWS

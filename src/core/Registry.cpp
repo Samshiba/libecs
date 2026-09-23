@@ -16,6 +16,9 @@ namespace libecs::core::registry
     {
         if (nextFreeIndex_ == NULL_INDEX)
         {
+            // 24-bit index space exhausted (NULL_INDEX itself is reserved)
+            assert(entities_.size() < NULL_INDEX);
+
             Entity entity = core::CreateEntity(
                 static_cast<uint32_t>(entities_.size()), 0);
             entities_.push_back(entity);

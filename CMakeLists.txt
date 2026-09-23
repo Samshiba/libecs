@@ -75,7 +75,7 @@ set(LIBECS_COMPILE_OPTIONS
         -Wall -Wextra -Werror -pedantic
         >
 )
-target_compile_options(libecs PRIVATE ${LIBECS_WARNINGS})
+target_compile_options(libecs PRIVATE ${LIBECS_COMPILE_OPTIONS})
 
 # Compile Definitions
 target_compile_definitions(libecs PUBLIC

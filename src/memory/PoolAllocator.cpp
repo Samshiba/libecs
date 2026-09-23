@@ -4,8 +4,11 @@
 //
 
 #include <cassert>
-#include <libecs/memory/PoolAllocator.hpp>
+#include <cstdint>
+#include <new>
 #include <stdexcept>
+
+#include <libecs/memory/PoolAllocator.hpp>
 
 #ifdef LIBECS_PLATFORM_WINDOWS
 #include <windows.h>
@@ -82,8 +85,9 @@ namespace libecs::memory
         if (!ptr)
             return;
 
-        auto start = reinterpret_cast<std::uintptr_t>(start_);
-        auto end = reinterpret_cast<std::uintptr_t>(ptr);
+        // Only read by the assert: unused when NDEBUG is defined
+        [[maybe_unused]] auto start = reinterpret_cast<std::uintptr_t>(start_);
+        [[maybe_unused]] auto end = reinterpret_cast<std::uintptr_t>(ptr);
 
         assert(end >= start && end < start + blockSize_ && (end - start) %
             chunkSize_ == 0);

@@ -6,12 +6,15 @@
 #include <doctest.h>
 #include <libecs/core/SparseSet.hpp>
 
-struct PositionComponent
+namespace
 {
-    float x;
-    float y;
-    bool operator==(const PositionComponent&) const = default;
-};
+    struct PositionComponent
+    {
+        float x;
+        float y;
+        bool operator==(const PositionComponent&) const = default;
+    };
+}
 
 TEST_SUITE("SparseSet Core Mechanics")
 {

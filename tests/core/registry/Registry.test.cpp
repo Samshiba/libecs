@@ -6,18 +6,21 @@
 #include  <doctest.h>
 #include <libecs/core/registry/Registry.hpp>
 
-struct PositionComponent
+namespace
 {
-    float x;
-    float y;
-
-    PositionComponent(float x, float y)
-        : x(x), y(y)
+    struct PositionComponent
     {
-    }
+        float x;
+        float y;
 
-    bool operator==(const PositionComponent&) const = default;
-};
+        PositionComponent(float x, float y)
+            : x(x), y(y)
+        {
+        }
+
+        bool operator==(const PositionComponent&) const = default;
+    };
+}
 
 TEST_SUITE("Registry test suite")
 {

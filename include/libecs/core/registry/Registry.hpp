@@ -10,10 +10,9 @@
 #include <cassert>
 
 #include <libecs/core/Entity.hpp>
+#include <libecs/core/SparseSet.hpp>
 #include <libecs/core/registry/IPool.hpp>
-
-#include "TypeId.hpp"
-#include "libecs/core/SparseSet.hpp"
+#include <libecs/core/registry/TypeId.hpp>
 
 namespace libecs::core::registry
 {

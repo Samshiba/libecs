@@ -11,9 +11,8 @@
 #include <cassert>
 #include <utility>
 
+#include <libecs/core/Entity.hpp>
 #include <libecs/core/registry/IPool.hpp>
-
-#include "Entity.hpp"
 
 namespace libecs::core
 {
@@ -57,8 +56,7 @@ namespace libecs::core
     };
 
     template <typename Component>
-    SparseSet<Component>::SparseLocation SparseSet<Component>::Locate(
-        Entity entity)
+    auto SparseSet<Component>::Locate(Entity entity) -> SparseLocation
     {
         const uint32_t entityIndex = GetEntityIndex(entity);
         return { entityIndex / PAGE_SIZE, entityIndex % PAGE_SIZE };
