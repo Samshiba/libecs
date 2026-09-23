@@ -37,6 +37,24 @@ TEST_SUITE("SparseSet Core Mechanics")
         CHECK(positions.Get(e1) == PositionComponent{99.0f, 20.0f});
     }
 
+    TEST_CASE("Insertion with varying entity indices")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e_low = libecs::core::CreateEntity(5, 0);
+        libecs::core::Entity e_high = libecs::core::CreateEntity(100000, 0);
+        libecs::core::Entity e_medium = libecs::core::CreateEntity(5000, 0);
+
+        ints.Insert(e_low, 100);
+        ints.Insert(e_high, 200);
+        ints.Insert(e_medium, 300);
+
+        CHECK(ints.Contains(e_low) == true);
+        CHECK(ints.Contains(e_high) == true);
+        CHECK(ints.Contains(e_medium) == true);
+
+        CHECK(ints.Get(e_medium) == 300);
+    }
+
     TEST_CASE("Swap and Pop logic (Removal)")
     {
         libecs::core::SparseSet<int> ints;

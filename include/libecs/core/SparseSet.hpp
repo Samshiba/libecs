@@ -48,7 +48,13 @@ namespace libecs::core
         std::size_t pageIndex = entityIndex / 4096;
         std::size_t offset = entityIndex % 4096;
 
-        sparse_.resize(pageIndex + 1);
+        //Resize only if the pageIndex is greater than the current size of sparse_
+        if (pageIndex >= sparse_.size())
+        {
+            sparse_.resize(pageIndex + 1);
+        }
+
+        // Allocate a new page if it doesn't exist
         if (sparse_[pageIndex] == nullptr)
         {
             sparse_[pageIndex] = std::make_unique<std::array<size_t, 4096> >();
