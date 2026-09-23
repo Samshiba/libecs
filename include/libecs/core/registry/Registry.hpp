@@ -78,12 +78,21 @@ namespace libecs::core::registry
 #endif
         ComponentTypeId typeId = GetTypeId<Component>();
 
-        if (typeId < componentPools_.size() && componentPools_[typeId] !=
+        if (componentPools_.size() <= typeId || componentPools_[typeId] ==
             nullptr)
         {
-            static_cast<SparseSet<Component>&>(*componentPools_[typeId]).Remove(
-                entity);
+            return;
         }
+
+        auto& pool = static_cast<SparseSet<Component>&>(*componentPools_[
+            typeId]);
+
+        if (!pool.Contains(entity))
+        {
+            return;
+        }
+
+        pool.Remove(entity);
     }
 
     template <typename Component>

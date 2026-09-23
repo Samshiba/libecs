@@ -66,6 +66,9 @@ namespace libecs::core
     template <typename Component>
     void SparseSet<Component>::Remove(Entity entity)
     {
+#ifndef NODEBUG
+        assert(Contains(entity));
+#endif
         uint32_t entityIndex = GetEntityIndex(entity);
         std::size_t pageIndex = entityIndex / 4096;
         std::size_t offset = entityIndex % 4096;
