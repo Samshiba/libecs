@@ -145,6 +145,30 @@ TEST_SUITE("Registry test suite")
         CHECK(registry.HasComponent<PositionComponent>(entity1));
     }
 
+    TEST_CASE("Getting components")
+    {
+        auto registry = libecs::core::registry::Registry();
+
+        libecs::core::Entity entity1 = registry.CreateEntity();
+        libecs::core::Entity entity2 = registry.CreateEntity();
+
+        registry.EmplaceComponent<PositionComponent>(entity1, 10.0f, 20.0f);
+
+        CHECK(registry.GetComponent<PositionComponent>(entity1) ==
+              PositionComponent{10.0f, 20.0f});
+
+        registry.GetComponent<PositionComponent>(entity1).x = 99.0f;
+        CHECK(registry.GetComponent<PositionComponent>(entity1).x == 99.0f);
+
+        CHECK(registry.TryGetComponent<PositionComponent>(entity1) != nullptr);
+        CHECK(registry.TryGetComponent<PositionComponent>(entity2) == nullptr);
+        CHECK(registry.TryGetComponent<int>(entity1) == nullptr);
+
+        const auto& constRegistry = registry;
+        CHECK(constRegistry.GetComponent<PositionComponent>(entity1).x == 99.0f);
+        CHECK(constRegistry.TryGetComponent<int>(entity1) == nullptr);
+    }
+
     TEST_CASE("Removing unexistent component")
     {
         auto registry = libecs::core::registry::Registry();

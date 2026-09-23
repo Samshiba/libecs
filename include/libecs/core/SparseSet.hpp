@@ -44,6 +44,7 @@ namespace libecs::core
 
         [[nodiscard]] bool Contains(Entity entity) const;
         Component& Get(Entity entity);
+        const Component& Get(Entity entity) const;
 
         void EntityDestroyed(Entity entity) override;
 
@@ -140,6 +141,16 @@ namespace libecs::core
 
     template <typename Component>
     Component& SparseSet<Component>::Get(Entity entity)
+    {
+        assert(Contains(entity));
+
+        auto [pageIndex, offset] = Locate(entity);
+
+        return denseComponents_[(*sparse_[pageIndex])[offset]];
+    }
+
+    template <typename Component>
+    const Component& SparseSet<Component>::Get(Entity entity) const
     {
         assert(Contains(entity));
 

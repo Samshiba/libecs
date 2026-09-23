@@ -24,6 +24,16 @@ namespace libecs::core::registry
         std::vector<Entity> entities_;
         std::vector<std::unique_ptr<IPool> > componentPools_;
 
+        // Pool lookup: nullptr if no component of this type was ever emplaced
+        template <typename Component>
+        SparseSet<Component>* GetPool();
+
+        template <typename Component>
+        const SparseSet<Component>* GetPool() const;
+
+        template <typename Component>
+        SparseSet<Component>& GetOrCreatePool();
+
     public:
         Registry();
 
@@ -40,16 +50,55 @@ namespace libecs::core::registry
 
         template <typename Component>
         [[nodiscard]] bool HasComponent(Entity entity) const;
+
+        template <typename Component>
+        [[nodiscard]] Component& GetComponent(Entity entity);
+
+        template <typename Component>
+        [[nodiscard]] const Component& GetComponent(Entity entity) const;
+
+        template <typename Component>
+        [[nodiscard]] Component* TryGetComponent(Entity entity);
+
+        template <typename Component>
+        [[nodiscard]] const Component* TryGetComponent(Entity entity) const;
     };
 
-    template <typename Component, typename... Args>
-    Component& Registry::EmplaceComponent(Entity entity, Args&&... args)
+    template <typename Component>
+    SparseSet<Component>* Registry::GetPool()
     {
-        assert(IsEntityValid(entity));
+        const ComponentTypeId typeId = GetTypeId<Component>();
 
-        ComponentTypeId typeId = GetTypeId<Component>();
+        if (typeId >= componentPools_.size())
+        {
+            return nullptr;
+        }
 
-        if (componentPools_.size() <= typeId)
+        // Safe: slot typeId only ever holds a SparseSet<Component>
+        return static_cast<SparseSet<Component>*>(componentPools_[typeId].
+            get());
+    }
+
+    template <typename Component>
+    const SparseSet<Component>* Registry::GetPool() const
+    {
+        const ComponentTypeId typeId = GetTypeId<Component>();
+
+        if (typeId >= componentPools_.size())
+        {
+            return nullptr;
+        }
+
+        return static_cast<const SparseSet<Component>*>(componentPools_[
+            typeId].get());
+    }
+
+    template <typename Component>
+    SparseSet<Component>& Registry::GetOrCreatePool()
+    {
+        const ComponentTypeId typeId = GetTypeId<Component>();
+
+        if (typeId >= componentPools_.size())
         {
             componentPools_.resize(typeId + 1);
         }
@@ -59,9 +108,15 @@ namespace libecs::core::registry
             componentPools_[typeId] = std::make_unique<SparseSet<Component> >();
         }
 
-        auto& pool = static_cast<SparseSet<Component>&>(*componentPools_[
-            typeId]);
+        return static_cast<SparseSet<Component>&>(*componentPools_[typeId]);
+    }
 
+    template <typename Component, typename... Args>
+    Component& Registry::EmplaceComponent(Entity entity, Args&&... args)
+    {
+        assert(IsEntityValid(entity));
+
+        auto& pool = GetOrCreatePool<Component>();
         pool.Emplace(entity, std::forward<Args>(args)...);
 
         return pool.Get(entity);
@@ -72,23 +127,12 @@ namespace libecs::core::registry
     {
         assert(IsEntityValid(entity));
 
-        ComponentTypeId typeId = GetTypeId<Component>();
+        auto* pool = GetPool<Component>();
 
-        if (componentPools_.size() <= typeId || componentPools_[typeId] ==
-            nullptr)
+        if (pool && pool->Contains(entity))
         {
-            return;
+            pool->Remove(entity);
         }
-
-        auto& pool = static_cast<SparseSet<Component>&>(*componentPools_[
-            typeId]);
-
-        if (!pool.Contains(entity))
-        {
-            return;
-        }
-
-        pool.Remove(entity);
     }
 
     template <typename Component>
@@ -96,15 +140,41 @@ namespace libecs::core::registry
     {
         assert(IsEntityValid(entity));
 
-        ComponentTypeId typeId = GetTypeId<Component>();
+        const auto* pool = GetPool<Component>();
+        return pool && pool->Contains(entity);
+    }
 
-        if (componentPools_.size() <= typeId || componentPools_[typeId] ==
-            nullptr)
-        {
-            return false;
-        }
+    template <typename Component>
+    Component& Registry::GetComponent(Entity entity)
+    {
+        assert(HasComponent<Component>(entity));
 
-        return static_cast<SparseSet<Component>&>(*componentPools_[typeId]).
-            Contains(entity);
+        return GetPool<Component>()->Get(entity);
+    }
+
+    template <typename Component>
+    const Component& Registry::GetComponent(Entity entity) const
+    {
+        assert(HasComponent<Component>(entity));
+
+        return GetPool<Component>()->Get(entity);
+    }
+
+    template <typename Component>
+    Component* Registry::TryGetComponent(Entity entity)
+    {
+        assert(IsEntityValid(entity));
+
+        auto* pool = GetPool<Component>();
+        return pool && pool->Contains(entity) ? &pool->Get(entity) : nullptr;
+    }
+
+    template <typename Component>
+    const Component* Registry::TryGetComponent(Entity entity) const
+    {
+        assert(IsEntityValid(entity));
+
+        const auto* pool = GetPool<Component>();
+        return pool && pool->Contains(entity) ? &pool->Get(entity) : nullptr;
     }
 }
