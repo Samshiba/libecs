@@ -20,6 +20,18 @@ namespace libecs::core
     template <typename Component>
     class SparseSet : public registry::IPool
     {
+    private:
+        static constexpr std::size_t PAGE_SIZE = 4096;
+        using Page = std::array<std::size_t, PAGE_SIZE>;
+
+        struct SparseLocation
+        {
+            std::size_t pageIndex;
+            std::size_t offset;
+        };
+
+        static SparseLocation Locate(Entity entity);
+
     public:
         SparseSet() = default;
         ~SparseSet() override = default;
@@ -40,8 +52,16 @@ namespace libecs::core
     private:
         std::vector<Component> denseComponents_;
         std::vector<Entity> denseEntities_;
-        std::vector<std::unique_ptr<std::array<std::size_t, 4096> > > sparse_;
+        std::vector<std::unique_ptr<Page> > sparse_;
     };
+
+    template <typename Component>
+    SparseSet<Component>::SparseLocation SparseSet<Component>::Locate(
+        Entity entity)
+    {
+        const uint32_t entityIndex = GetEntityIndex(entity);
+        return { entityIndex / PAGE_SIZE, entityIndex % PAGE_SIZE };
+    }
 
     template <typename Component>
     void SparseSet<Component>::Insert(Entity entity, Component component)
@@ -54,9 +74,7 @@ namespace libecs::core
     {
         assert(Contains(entity));
 
-        uint32_t entityIndex = GetEntityIndex(entity);
-        std::size_t pageIndex = entityIndex / 4096;
-        std::size_t offset = entityIndex % 4096;
+        auto [pageIndex, offset] = Locate(entity);
         std::size_t denseIndex = (*sparse_[pageIndex])[offset];
         Entity lastEntity = denseEntities_.back();
 
@@ -69,9 +87,7 @@ namespace libecs::core
         // Update the sparse set to point to the new index of the moved component
         if (entity != lastEntity)
         {
-            std::size_t lastEntityIndex = GetEntityIndex(lastEntity);
-            std::size_t lastPageIndex = lastEntityIndex / 4096;
-            std::size_t lastOffset = lastEntityIndex % 4096;
+            auto [lastPageIndex, lastOffset] = Locate(lastEntity);
             (*sparse_[lastPageIndex])[lastOffset] = denseIndex;
         }
     }
@@ -90,9 +106,7 @@ namespace libecs::core
         denseEntities_.push_back(entity);
         std::size_t denseIndex = denseComponents_.size() - 1;
 
-        uint32_t entityIndex = GetEntityIndex(entity);
-        std::size_t pageIndex = entityIndex / 4096;
-        std::size_t offset = entityIndex % 4096;
+        auto [pageIndex, offset] = Locate(entity);
 
         //Resize only if the pageIndex is greater than the current size of sparse_
         if (pageIndex >= sparse_.size())
@@ -103,7 +117,7 @@ namespace libecs::core
         // Allocate a new page if it doesn't exist
         if (sparse_[pageIndex] == nullptr)
         {
-            sparse_[pageIndex] = std::make_unique<std::array<size_t, 4096> >();
+            sparse_[pageIndex] = std::make_unique<Page>();
         }
 
         (*sparse_[pageIndex])[offset] = denseIndex;
@@ -112,9 +126,7 @@ namespace libecs::core
     template <typename Component>
     bool SparseSet<Component>::Contains(Entity entity) const
     {
-        uint32_t entityIndex = GetEntityIndex(entity);
-        std::size_t pageIndex = entityIndex / 4096;
-        std::size_t offset = entityIndex % 4096;
+        auto [pageIndex, offset] = Locate(entity);
 
         if (pageIndex >= sparse_.size() || sparse_[pageIndex] == nullptr)
             return false;
@@ -131,9 +143,7 @@ namespace libecs::core
     {
         assert(Contains(entity));
 
-        uint32_t entityIndex = GetEntityIndex(entity);
-        std::size_t pageIndex = entityIndex / 4096;
-        std::size_t offset = entityIndex % 4096;
+        auto [pageIndex, offset] = Locate(entity);
 
         return denseComponents_[(*sparse_[pageIndex])[offset]];
     }
