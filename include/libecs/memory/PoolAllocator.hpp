@@ -20,6 +20,9 @@ namespace libecs::memory
         PoolAllocator(std::size_t chunkSize, std::size_t blockSize);
         ~PoolAllocator();
 
+        PoolAllocator(const PoolAllocator&) = delete;
+        PoolAllocator& operator=(const PoolAllocator&) = delete;
+
         void* Allocate();
         void Deallocate(void* ptr);
 
