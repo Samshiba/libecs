@@ -3,7 +3,11 @@
 // Path: src/memory/PoolAllocator.cpp
 //
 
-#include <iostream>
+#include <cassert>
+#include <cstdint>
+#include <new>
+#include <stdexcept>
+
 #include <libecs/memory/PoolAllocator.hpp>
 
 #ifdef LIBECS_PLATFORM_WINDOWS
@@ -35,7 +39,6 @@ namespace libecs::memory
                               PAGE_READWRITE);
         if (!start_)
         {
-            std::cerr << "Failed to reserve memory for PoolAllocator.\n";
             throw std::bad_alloc();
         }
 
@@ -69,8 +72,7 @@ namespace libecs::memory
     {
         if (!head_)
         {
-            std::cerr << "PoolAllocator out of memory.\n";
-            return nullptr;
+            return nullptr; // No more free space
         }
 
         auto chunk = reinterpret_cast<Chunk*>(head_);
@@ -83,16 +85,12 @@ namespace libecs::memory
         if (!ptr)
             return;
 
-        auto start = reinterpret_cast<std::uintptr_t>(start_);
-        auto end = reinterpret_cast<std::uintptr_t>(ptr);
+        // Only read by the assert: unused when NDEBUG is defined
+        [[maybe_unused]] auto start = reinterpret_cast<std::uintptr_t>(start_);
+        [[maybe_unused]] auto end = reinterpret_cast<std::uintptr_t>(ptr);
 
-        if (end < start || end >= start + blockSize_ || (end - start) %
-            chunkSize_ != 0)
-        {
-            std::cerr <<
-                "Pointer out of bounds for PoolAllocator deallocation.\n";
-            return;
-        }
+        assert(end >= start && end < start + blockSize_ && (end - start) %
+            chunkSize_ == 0);
 
         auto* chunk = reinterpret_cast<Chunk*>(ptr);
         chunk->next = reinterpret_cast<Chunk*>(head_);

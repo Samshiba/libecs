@@ -3,7 +3,9 @@
 // Path: src/memory/LinearAllocator.cpp
 //
 
-#include <iostream>
+#include <memory>
+#include <new>
+
 #include <libecs/memory/LinearAllocator.hpp>
 
 #ifdef LIBECS_PLATFORM_WINDOWS
@@ -23,7 +25,6 @@ namespace libecs::memory
 
         if (!start_)
         {
-            std::cerr << "Failed to reserve memory for LinearAllocator.\n";
             throw std::bad_alloc();
         }
     }
@@ -46,8 +47,7 @@ namespace libecs::memory
 
         if (!alignedPtr)
         {
-            std::cerr << "LinearAllocator out of memory.\n";
-            return nullptr;
+            return nullptr; // No more free space
         }
 
         offset_ = totalSize_ - spaceLeft + size;

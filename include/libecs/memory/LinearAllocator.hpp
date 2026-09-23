@@ -15,6 +15,9 @@ namespace libecs::memory
         LinearAllocator(std::size_t totalSize);
         ~LinearAllocator();
 
+        LinearAllocator(const LinearAllocator&) = delete;
+        LinearAllocator& operator=(const LinearAllocator&) = delete;
+
         void* Allocate(std::size_t size, std::size_t alignment);
         void Clear();
 

@@ -58,7 +58,7 @@ target_include_directories(libecs
 )
 
 # Compile Options
-target_compile_options(libecs PRIVATE
+set(LIBECS_COMPILE_OPTIONS
         # --- MSVC Config ---
         $<$<CXX_COMPILER_ID:MSVC>:
         $<$<CONFIG:Debug>:/Od /Zi /RTC1 /MDd>
@@ -75,6 +75,7 @@ target_compile_options(libecs PRIVATE
         -Wall -Wextra -Werror -pedantic
         >
 )
+target_compile_options(libecs PRIVATE ${LIBECS_COMPILE_OPTIONS})
 
 # Compile Definitions
 target_compile_definitions(libecs PUBLIC
@@ -84,7 +85,7 @@ target_compile_definitions(libecs PUBLIC
         $<$<PLATFORM_ID:Darwin>:LIBECS_PLATFORM_MACOS>
 
         # Build Type
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:Profile>>:NODEBUG>
+        $<$<CONFIG:Profile>:NDEBUG>
         $<$<CONFIG:Debug>:LIBECS_DEBUG_BUILD LIBECS_ENABLE_ASSERTS LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Profile>:LIBECS_PROFILE_BUILD LIBECS_ENABLE_LOGGING>
         $<$<CONFIG:Release>:LIBECS_RELEASE_BUILD>

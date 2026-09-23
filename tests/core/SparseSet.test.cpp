@@ -6,12 +6,15 @@
 #include <doctest.h>
 #include <libecs/core/SparseSet.hpp>
 
-struct PositionComponent
+namespace
 {
-    float x;
-    float y;
-    bool operator==(const PositionComponent&) const = default;
-};
+    struct PositionComponent
+    {
+        float x;
+        float y;
+        bool operator==(const PositionComponent&) const = default;
+    };
+}
 
 TEST_SUITE("SparseSet Core Mechanics")
 {
@@ -35,6 +38,43 @@ TEST_SUITE("SparseSet Core Mechanics")
 
         positions.Get(e1).x = 99.0f;
         CHECK(positions.Get(e1) == PositionComponent{99.0f, 20.0f});
+    }
+
+    TEST_CASE("Insertion with varying entity indices")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e_low = libecs::core::CreateEntity(5, 0);
+        libecs::core::Entity e_high = libecs::core::CreateEntity(100000, 0);
+        libecs::core::Entity e_medium = libecs::core::CreateEntity(5000, 0);
+
+        ints.Insert(e_low, 100);
+        ints.Insert(e_high, 200);
+        ints.Insert(e_medium, 300);
+
+        CHECK(ints.Contains(e_low) == true);
+        CHECK(ints.Contains(e_high) == true);
+        CHECK(ints.Contains(e_medium) == true);
+
+        CHECK(ints.Get(e_medium) == 300);
+    }
+
+    TEST_CASE("Inserting multiple components for the same entity")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e1 = libecs::core::CreateEntity(1, 0);
+        libecs::core::Entity e2 = libecs::core::CreateEntity(2, 0);
+
+        ints.Insert(e1, 100);
+        CHECK(ints.Get(e1) == 100);
+
+        // Insert again with a different value
+        ints.Insert(e1, 200);
+        CHECK(ints.Get(e1) == 200);
+
+        ints.Insert(e2, 300);
+        ints.Remove(e1);
+        CHECK(ints.Contains(e1) == false);
+        CHECK(ints.Get(e2) == 300);
     }
 
     TEST_CASE("Swap and Pop logic (Removal)")
