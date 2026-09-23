@@ -61,9 +61,8 @@ namespace libecs::core::registry
 
         auto& pool = static_cast<SparseSet<Component>&>(*componentPools_[
             typeId]);
-        Component component(std::forward<Args>(args)...);
 
-        pool.Insert(entity, std::move(component));
+        pool.Emplace(entity, std::forward<Args>(args)...);
 
         return pool.Get(entity);
     }

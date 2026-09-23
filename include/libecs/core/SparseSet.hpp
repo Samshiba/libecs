@@ -27,6 +27,9 @@ namespace libecs::core
         void Insert(Entity entity, Component component);
         void Remove(Entity entity);
 
+        template <typename... Args>
+        void Emplace(Entity entity, Args&&... args);
+
         [[nodiscard]] bool Contains(Entity entity) const;
         Component& Get(Entity entity);
 
@@ -95,6 +98,39 @@ namespace libecs::core
             std::size_t lastOffset = lastEntityIndex % 4096;
             (*sparse_[lastPageIndex])[lastOffset] = denseIndex;
         }
+    }
+
+    template <typename Component>
+    template <typename... Args>
+    void SparseSet<Component>::Emplace(Entity entity, Args&&... args)
+    {
+        if (Contains(entity))
+        {
+            Get(entity) = Component(std::forward<Args>(args)...);
+            return;
+        }
+
+        denseComponents_.emplace_back(std::forward<Args>(args)...);
+        denseEntities_.push_back(entity);
+        std::size_t denseIndex = denseComponents_.size() - 1;
+
+        uint32_t entityIndex = GetEntityIndex(entity);
+        std::size_t pageIndex = entityIndex / 4096;
+        std::size_t offset = entityIndex % 4096;
+
+        //Resize only if the pageIndex is greater than the current size of sparse_
+        if (pageIndex >= sparse_.size())
+        {
+            sparse_.resize(pageIndex + 1);
+        }
+
+        // Allocate a new page if it doesn't exist
+        if (sparse_[pageIndex] == nullptr)
+        {
+            sparse_[pageIndex] = std::make_unique<std::array<size_t, 4096> >();
+        }
+
+        (*sparse_[pageIndex])[offset] = denseIndex;
     }
 
     template <typename Component>
