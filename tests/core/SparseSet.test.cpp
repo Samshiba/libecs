@@ -135,4 +135,22 @@ TEST_SUITE("SparseSet Core Mechanics")
         CHECK(ints.Contains(e_high) == false);
         CHECK(ints.Contains(e_massive) == true);
     }
+
+    TEST_CASE("Get entities")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e1 = libecs::core::CreateEntity(1, 0);
+        libecs::core::Entity e2 = libecs::core::CreateEntity(2, 0);
+        libecs::core::Entity e3 = libecs::core::CreateEntity(3, 0);
+
+        ints.Insert(e1, 100);
+        ints.Insert(e2, 200);
+        ints.Insert(e3, 300);
+
+        auto entities = ints.GetEntities();
+        CHECK(entities.size() == 3);
+        CHECK(entities[0] == e1);
+        CHECK(entities[1] == e2);
+        CHECK(entities[2] == e3);
+    }
 }
