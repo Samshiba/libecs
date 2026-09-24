@@ -3,7 +3,10 @@
 // Path: tests/core/registry/Registry.test.cpp
 //
 
-#include  <doctest.h>
+#include <algorithm>
+#include <doctest.h>
+#include <vector>
+
 #include <libecs/core/registry/Registry.hpp>
 
 namespace
@@ -246,8 +249,10 @@ TEST_SUITE("Registry test suite")
             vel.vy -= 20.0f;
         });
 
+        // Iteration order is unspecified: only check which entities were visited
         CHECK(visitedEntities.size() == 2);
-        CHECK(visitedEntities[0] == entity1);
+        CHECK(std::ranges::count(visitedEntities, entity1) == 1);
+        CHECK(std::ranges::count(visitedEntities, entity4) == 1);
         CHECK(view2.Get<VelocityComponent>(entity1) == VelocityComponent{11.0f,
               -18.0f});
     }

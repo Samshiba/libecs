@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <span>
 #include <cassert>
+#include <ranges>
 
 #include <libecs/core/SparseSet.hpp>
 
@@ -85,7 +86,7 @@ namespace libecs::core::view
         if (!HasAllPools())
             return;
 
-        for (const Entity entity : SmallestPoolEntities())
+        for (auto entity : SmallestPoolEntities() | std::views::reverse)
         {
             if (Contains(entity))
             {
