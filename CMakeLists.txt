@@ -11,7 +11,7 @@ project(libecs
 
 # Options as main project
 option(LIBECS_BUILD_TESTS "Build libecs tests" ${PROJECT_IS_TOP_LEVEL})
-option(LIBECS_BUILD_BENCHMARKS "Build libecs benchmarks" OFF)
+option(LIBECS_BUILD_BENCHMARKS "Build libecs benchmarks" ${PROJECT_IS_TOP_LEVEL})
 option(LIBECS_INSTALL "Generate libecs install rules" ${PROJECT_IS_TOP_LEVEL})
 option(LIBECS_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ${PROJECT_IS_TOP_LEVEL})
 
@@ -76,18 +76,14 @@ target_include_directories(libecs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBECS_COMPILE_OPTIONS
         # --- MSVC Config ---
         $<$<CXX_COMPILER_ID:MSVC>:
-        $<$<CONFIG:Debug>:/Od /Zi /RTC1 /MDd>
-        $<$<CONFIG:Profile>:/O2 /Zi /MD>
-        $<$<CONFIG:Release>:/O2 /MD>
+        $<$<CONFIG:Profile>:/O2 /Zi>
         /W4 /permissive- /Zc:preprocessor
         $<$<BOOL:${LIBECS_WARNINGS_AS_ERRORS}>:/WX>
         >
 
         # --- GCC/Clang Config ---
         $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:
-        $<$<CONFIG:Debug>:-O0 -g>
         $<$<CONFIG:Profile>:-O3 -g>
-        $<$<CONFIG:Release>:-O3>
         -Wall -Wextra -pedantic
         $<$<BOOL:${LIBECS_WARNINGS_AS_ERRORS}>:-Werror>
         >
@@ -98,6 +94,11 @@ target_compile_options(libecs PRIVATE ${LIBECS_COMPILE_OPTIONS})
 if (LIBECS_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif ()
+
+# Benchmarks
+if (LIBECS_BUILD_BENCHMARKS)
+    add_subdirectory(bench)
 endif ()
 
 # Install / export: enables find_package(libecs) after `cmake --install`
