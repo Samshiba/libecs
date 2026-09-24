@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [ Release ]
+        config: [ Debug, Release ]
         toolchain:
           - { name: MSVC, os: windows-latest, cxx: cl }
           - { name: GCC, os: ubuntu-latest, cxx: g++ }
@@ -63,6 +63,7 @@ jobs:
 
       # The benchmark prints a Markdown table: append it to the job summary
       - name: Run benchmark
+        if: matrix.config == 'Release'
         shell: bash
         run: |
           ./build/bin/libecs_bench | tee benchmark-results.md
