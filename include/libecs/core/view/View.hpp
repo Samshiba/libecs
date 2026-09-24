@@ -7,9 +7,9 @@
 
 #include <tuple>
 #include <type_traits>
-#include <span>
 #include <cassert>
 #include <ranges>
+#include <algorithm>
 
 #include <libecs/core/SparseSet.hpp>
 
