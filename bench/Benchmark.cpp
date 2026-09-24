@@ -72,7 +72,7 @@ namespace
         const double nsPerEntity = ms * 1'000'000.0 / static_cast<double>(
             processed);
         // The checksum is printed so the compiler can't optimize the work away
-        std::printf("| %-50s | %8.2f | %9.2f | %9zu | %g\n", name, ms,
+        std::printf("| %-50s | %8.2f | %9.2f | %9zu | %8g |\n", name, ms,
                     nsPerEntity, processed, static_cast<double>(checksum));
     }
 
@@ -235,9 +235,12 @@ int main()
 {
     std::printf("%zu entities, median of %d runs\n\n", ENTITY_COUNT,
                 MEASURED_RUNS);
-    std::printf("| %-50s | %8s | %9s | %9s | checksum\n", "Scenario",
-                "ms", "ns/entity", "processed");
-    std::printf("|%s|\n", std::string(90, '-').c_str());
+    // Valid Markdown table: readable in a terminal, rendered by GitHub
+    std::printf("| %-50s | %8s | %9s | %9s | %8s |\n", "Scenario", "ms",
+                "ns/entity", "processed", "checksum");
+    std::printf("|%s|%s:|%s:|%s:|%s:|\n", std::string(52, '-').c_str(),
+                std::string(9, '-').c_str(), std::string(10, '-').c_str(),
+                std::string(10, '-').c_str(), std::string(9, '-').c_str());
 
     BenchPlainVector();
     BenchOop(false);
