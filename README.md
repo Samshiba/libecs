@@ -15,7 +15,7 @@ I wrote it to learn how an ECS works from the inside, and it is meant to become 
 - **Safe entity handles**: each handle carries a version number. A handle to a destroyed entity is detected, and never silently points to the new entity reusing its slot.
 - **O(1) add, remove and lookup** of components, which are stored contiguously in memory.
 - **Multi-component views** that iterate the smallest pool first.
-- **About 4× faster than a classic object-oriented update loop** on 1 million objects (see [Benchmarks](#benchmarks)).
+- **Only reads the components a system needs**: on 1 million objects with 6 components each, a view is about 3× faster than a plain array of structs and 4 to 10× faster than a classic object-oriented loop on my laptop (see [Benchmarks](#benchmarks)).
 - **Tested on Windows and Linux** with MSVC, GCC and Clang, on every push.
 
 ## Example
@@ -58,23 +58,39 @@ int main()
 
 ## Benchmarks
 
-Each scenario runs one movement update (`position += velocity * dt`) over **1,000,000 objects**. The reported time is the median of 30 runs, measured in a Release build on an AMD Ryzen 7 5800H laptop. Timings vary by about ±10% between runs.
+Each scenario times one movement update (`position += velocity * dt`) over **1,000,000 objects**, compared across three designs:
 
-| Scenario                                                | MSVC 19.42 (Windows) | GCC 13.3 (Linux, WSL2) |
-|---------------------------------------------------------|---------------------:|-----------------------:|
-| `std::vector<struct>` (best possible case)              |               1.7 ms |                 1.3 ms |
-| OOP: `unique_ptr` + virtual `Update`, allocation order  |               6.1 ms |                 3.8 ms |
-| OOP: `unique_ptr` + virtual `Update`, shuffled          |              19.1 ms |                12.3 ms |
-| **libecs** `View<Position, Velocity>`                   |           **4.5 ms** |             **2.8 ms** |
-| libecs view, callback through `std::function`           |               5.7 ms |                 4.0 ms |
-| libecs view, only 10% of entities have a `Velocity`     |               1.4 ms |                 1.7 ms |
+- a plain `std::vector` of structs;
+- classic OOP: objects allocated one by one on the heap and updated through a virtual `Update`, either in allocation order or shuffled, which simulates objects created and destroyed during a game;
+- a libecs view.
+
+Every case is measured twice: with objects holding only the 2 components the update needs, then with more realistic objects holding 6 (`Position`, `Velocity`, `Rotation`, `Scale`, `Health`, `Sprite`: 56 bytes, of which the update uses 16). To limit noise, the scenarios are interleaved over 5 rounds of 10 runs each.
+
+Median times, Release build, AMD Ryzen 7 5800H laptop (16 MB of L3 cache):
+
+| Scenario                                        |    MSVC 19.42 |       GCC 13.3 |     Clang 18.1 |
+|-------------------------------------------------|--------------:|---------------:|---------------:|
+| **2 components per object**                     |               |                |                |
+| `std::vector<struct>`                           |        1.8 ms |         1.7 ms |         1.7 ms |
+| OOP, allocation order                           |        6.6 ms |         4.2 ms |         4.9 ms |
+| OOP, shuffled                                   |       20.0 ms |        18.9 ms |        18.9 ms |
+| **libecs** `View<Position, Velocity>`           |    **2.3 ms** |     **2.1 ms** |     **2.1 ms** |
+| libecs view, `std::function` callback           |        3.3 ms |         3.2 ms |         3.2 ms |
+| libecs view, 10% of entities have a `Velocity`  |        1.3 ms |         1.3 ms |         1.4 ms |
+| **6 components per object**                     |               |                |                |
+| `std::vector<struct>`                           |        6.7 ms |         6.5 ms |         6.5 ms |
+| OOP, allocation order                           |       14.7 ms |         8.4 ms |        10.0 ms |
+| OOP, shuffled                                   |       21.2 ms |        20.0 ms |        19.7 ms |
+| **libecs** `View<Position, Velocity>`           |    **2.3 ms** |     **1.9 ms** |     **2.3 ms** |
 
 How to read these numbers:
 
-- **Against object-oriented code**, the view is about 4× faster when the objects are scattered in memory. That is what happens to objects created and destroyed over the life of a game, and the "shuffled" row simulates it. Even when the objects sit in allocation order, which is the best case for OOP, the view is still about 1.4× faster.
-- **A plain `std::vector` of structs stays 2 to 2.7× faster.** It is the best possible case, because the code knows at compile time that every object has exactly these two fields. In libecs, each component type lives in its own array, and each access goes through a sparse set lookup: that is the price of adding and removing components at runtime. Part of this gap is also my current implementation, which looks each component up twice (once to check that the entity has it, once to read it). Removing that duplicate work is next on the [roadmap](#roadmap).
-- **`Each` takes the callback as a template parameter**, so the compiler can inline it. Passing the same callback through `std::function` blocks inlining and makes the loop 25 to 40% slower.
-- **Starting from the smallest pool pays off.** When only 100k of the 1M entities have a `Velocity`, the view walks the `Velocity` pool and takes 1.4 ms instead of 4.5 ms. Each matching entity costs more, though, because its `Position` is no longer read sequentially.
+- **The view only pays for what it reads.** Its time is the same with 2 or 6 components per object, because it only walks the `Position` and `Velocity` arrays. An array of structs, or an OOP object, loads the whole 56-byte object to use 16 bytes of it. With 6 components, the view is about 3× faster than the array of structs, 4 to 6× faster than OOP in allocation order and 9 to 10× faster than shuffled OOP.
+- **With only 2 components, a plain array of structs stays 1.2 to 1.4× faster.** That is its best case: each object holds exactly what the update needs and nothing else. The view pays for a lookup in the `Velocity` sparse set for every entity, which is the price of being able to add and remove components at runtime.
+- **`Each` takes the callback as a template parameter**, so the compiler can inline it. Passing the same callback through `std::function` blocks inlining and makes the loop 40 to 50% slower.
+- **Starting from the smallest pool pays off.** When only 100k of the 1M entities have a `Velocity`, the view walks the `Velocity` pool and takes 1.3 ms instead of 2.2 ms. Each matching entity costs more, though, because its `Position` is no longer read sequentially.
+
+**These results depend on the hardware.** On my laptop, 1M objects don't fit in the CPU cache, so the update is limited by memory bandwidth, and reading less data is what matters most. The GitHub Actions runners have larger caches: there, the arrays of structs stay in cache, and the plain `std::vector<struct>` gets 3 to 5× faster than the view with 2 components. With 6 components, the view is still faster with GCC and Clang (1.4 to 2×), but slower with MSVC (1.5×). The OOP loops stay slower than the view everywhere: 1.2 to 1.8× in allocation order with 2 components, and 2.5 to 9× in every other case. Each CI run publishes its results in the job summary.
 
 To run the benchmark yourself:
 
@@ -122,7 +138,11 @@ When the component type is known at compile time, which is the case in `EmplaceC
 
 ### Views
 
-A `View<Ts...>` only holds one pointer per pool, so it is cheap to create every frame. `Each` picks the pool with the fewest components, walks its entities, and calls the callback for every entity that is also present in the other pools. The cost is therefore proportional to the smallest pool, not to the total number of entities.
+A `View<Ts...>` only holds one pointer per pool, so it is cheap to create every frame. `Each` picks the pool with the fewest components and walks it by position in its dense arrays: its components are read directly, without any lookup. For every other pool, a single sparse set lookup either returns the entity's component or tells that the entity doesn't have it, in which case the entity is skipped. The cost is therefore proportional to the smallest pool, not to the total number of entities.
+
+The smallest pool is only known at runtime, but reading it without lookups needs its type at compile time. `Each` bridges the two: it generates one version of the loop per possible pool (with `std::index_sequence`), and calls the one matching the smallest pool.
+
+The loop walks the pool backwards. When the callback destroys the current entity, swap-and-pop moves the last element into its slot, and that element has already been visited. The entities still to visit never move, so none is skipped or visited twice.
 
 ## Getting started
 
@@ -184,7 +204,8 @@ Besides `Debug` and `Release`, a `Profile` configuration builds with optimizatio
 ## Limitations
 
 - **Not thread-safe.** A registry must be used from one thread at a time.
-- **Don't add or remove components of the viewed types inside `Each`.** Removing one can make the loop skip an entity, and adding one can reallocate the arrays being iterated. Collect the changes and apply them after the loop.
+- **Inside `Each`, only modify the current entity.** Destroying it or removing its components is safe. Destroying another entity can make the loop visit an entity twice, and adding a component of a viewed type can reallocate the arrays being iterated. Collect those changes and apply them after the loop.
+- **The iteration order of a view is unspecified.** It depends on the pool being walked and changes as components are removed.
 - **Create views right before using them.** A view created before the first component of one of its types was added stays empty.
 - **Versions are 8 bits**, so they wrap around after 256 reuses of the same slot, and a very old handle could then look valid again.
 - **At most 16,777,215 entities** can exist at the same time (24-bit index).
@@ -192,8 +213,8 @@ Besides `Debug` and `Release`, a `Profile` configuration builds with optimizatio
 
 ## Roadmap
 
-- [ ] Look each component up only once per entity in `Each`, and skip the lookups in the pool being iterated
-- [ ] Iterate backwards in `Each`, so that removing the current entity's components becomes safe
+- [x] Look each component up only once per entity in `Each`, and skip the lookups in the pool being iterated
+- [x] Iterate backwards in `Each`, so that removing the current entity's components becomes safe
 - [ ] Range-based `for` over views: `for (auto [entity, position, velocity] : view)`
 - [ ] Read-only views: `View<const Position>`
 

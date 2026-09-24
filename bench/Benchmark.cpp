@@ -330,12 +330,13 @@ namespace
     }
 
     // Prints a Markdown table: readable in a terminal, rendered by GitHub
+    // (names use backticks, or GitHub would read <struct> as an HTML tag)
     void PrintTable(const char* title, const std::vector<Scenario>& scenarios)
     {
         std::printf("\n### %s\n\n", title);
-        std::printf("| %-44s | %8s | %8s | %9s | %9s | %8s |\n", "Scenario",
+        std::printf("| %-48s | %8s | %8s | %9s | %9s | %8s |\n", "Scenario",
                     "median", "min", "ns/entity", "processed", "checksum");
-        std::printf("|%s|%s:|%s:|%s:|%s:|%s:|\n", std::string(46, '-').c_str(),
+        std::printf("|%s|%s:|%s:|%s:|%s:|%s:|\n", std::string(50, '-').c_str(),
                     std::string(9, '-').c_str(), std::string(9, '-').c_str(),
                     std::string(10, '-').c_str(), std::string(10, '-').c_str(),
                     std::string(9, '-').c_str());
@@ -349,7 +350,7 @@ namespace
             const double nsPerEntity = median * 1'000'000.0 /
                 static_cast<double>(scenario.processed);
 
-            std::printf("| %-44s | %5.2f ms | %5.2f ms | %9.2f | %9zu | %8g |\n",
+            std::printf("| %-48s | %5.2f ms | %5.2f ms | %9.2f | %9zu | %8g |\n",
                         scenario.name.c_str(), median, timings.front(),
                         nsPerEntity, scenario.processed,
                         static_cast<double>(scenario.checksum()));
@@ -364,19 +365,20 @@ int main()
                 RUNS_PER_ROUND);
 
     std::vector<Scenario> small;
-    small.push_back(MakePlainVector<SmallObject>("std::vector<struct>"));
+    small.push_back(MakePlainVector<SmallObject>("`std::vector<struct>`"));
     small.push_back(MakeOop<SmallObject>("OOP, allocation order", false));
     small.push_back(MakeOop<SmallObject>("OOP, shuffled", true));
-    small.push_back(MakeView("libecs View<Position, Velocity>", 1, false));
-    small.push_back(MakeViewStdFunction("libecs view, std::function callback"));
-    small.push_back(MakeView("libecs view, 10% of entities have a Velocity",
+    small.push_back(MakeView("libecs `View<Position, Velocity>`", 1, false));
+    small.push_back(MakeViewStdFunction(
+        "libecs view, `std::function` callback"));
+    small.push_back(MakeView("libecs view, 10% of entities have a `Velocity`",
                              10, false));
 
     std::vector<Scenario> fat;
-    fat.push_back(MakePlainVector<FatObject>("std::vector<struct>"));
+    fat.push_back(MakePlainVector<FatObject>("`std::vector<struct>`"));
     fat.push_back(MakeOop<FatObject>("OOP, allocation order", false));
     fat.push_back(MakeOop<FatObject>("OOP, shuffled", true));
-    fat.push_back(MakeView("libecs View<Position, Velocity>", 1, true));
+    fat.push_back(MakeView("libecs `View<Position, Velocity>`", 1, true));
 
     // All scenarios are interleaved together
     std::vector<Scenario*> all;
