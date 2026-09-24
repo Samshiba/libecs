@@ -40,11 +40,11 @@ namespace libecs::core::view
         Pools pools_;
 
         [[nodiscard]] bool HasAllPools() const;
-        [[nodiscard]] std::span<const Entity> SmallestPoolEntities() const;
-        [[nodiscard]] std::size_t SmallestPoolIndex() const;
+        [[nodiscard]] std::array<std::size_t, sizeof...(Components)>
+        PoolSizes() const;
 
-        template <std::size_t Pivot, typename Func>
-        void EachFrom(Func&& func);
+        template <std::size_t Pivot, std::size_t... Is, typename Func>
+        void EachFrom(Func& func, std::index_sequence<Is...>);
     };
 
     template <typename... Components>
@@ -57,89 +57,44 @@ namespace libecs::core::view
     }
 
     template <typename... Components>
-    std::span<const Entity> View<Components...>::SmallestPoolEntities() const
+    auto View<Components
+        ...>::PoolSizes() const -> std::array<
+        std::size_t, sizeof...(Components)>
     {
         assert(HasAllPools());
 
-        auto result = std::get<0>(pools_)->GetEntities();
-
-        auto func = [&result](auto pool) {
-            if (pool->Size() < result.size())
-            {
-                result = pool->GetEntities();
-            }
-        };
-
-        std::apply(
-            [&](auto*... pool) {
-                (func(pool), ...);
+        return std::apply(
+            [](auto*... pool) {
+                return std::array{ pool->Size()... };
             }, pools_);
-
-        return result;
     }
 
     template <typename... Components>
-    std::size_t View<Components...>::SmallestPoolIndex() const
+    template <std::size_t Pivot, std::size_t... Is, typename Func>
+    void View<Components...>::EachFrom(Func& func, std::index_sequence<Is...>)
     {
-        assert(HasAllPools());
-
-        std::size_t index = 0;
-        std::size_t currentIndex = 0;
-        std::size_t size = std::get<0>(pools_)->Size();
-
-        auto func = [&](auto pool) {
-            if (pool->Size() < size)
-            {
-                size = pool->Size();
-                index = currentIndex;
-            }
-            currentIndex++;
-        };
-
-        std::apply(
-            [&](auto*... pool) {
-                (func(pool), ...);
-            }, pools_);
-
-        return index;
-    }
-
-    template <typename... Components>
-    template <std::size_t Pivot, typename Func>
-    void View<Components...>::EachFrom(Func&& func)
-    {
-        auto poolPivot = std::get<Pivot>(pools_);
-        for (std::size_t i = poolPivot->Size(); i > 0; --i)
+        const auto entities = std::get<Pivot>(pools_)->GetEntities();
+        for (std::size_t i = entities.size(); i-- > 0;)
         {
-            std::size_t index = i - 1;
-            auto entity = poolPivot->GetEntities()[index];
-            auto pivotComponentPtr = &poolPivot->GetByDenseIndex(index);
+            const Entity entity = entities[i];
 
-            auto invoke = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-                // Direct ptr for pivot pool or find lookup
-                auto getPtrs = [&]<std::size_t I>() {
-                    if constexpr (I == Pivot)
-                    {
-                        return pivotComponentPtr;
-                    }
-                    else
-                    {
-                        return std::get<I>(pools_)->Find(entity);
-                    }
-                };
-
-                // Fold all pools ptrs to func
-                auto process = [&](auto*... ptrs) {
-                    if ((ptrs && ...))
-                    {
-                        func(entity, *ptrs...);
-                    }
-                };
-
-                process(getPtrs.template operator()<Is>()...);
+            // Direct ptr for pivot pool or find lookup
+            auto getPtrs = [&]<std::size_t I>() {
+                if constexpr (I == Pivot)
+                    return &std::get<Pivot>(pools_)->GetByDenseIndex(i);
+                else
+                    return std::get<I>(pools_)->Find(entity);
             };
 
-            invoke(std::make_index_sequence<sizeof...(Components)>{});
+            // Fold all pools ptrs to func
+            auto process = [&](auto*... ptrs) {
+                if ((ptrs && ...))
+                {
+                    func(entity, *ptrs...);
+                }
+            };
+
+            process(getPtrs.template operator()<Is>()...);
         }
     }
 
@@ -156,19 +111,22 @@ namespace libecs::core::view
         if (!HasAllPools())
             return;
 
-        std::size_t pivotIndex = SmallestPoolIndex();
+        const auto sizes = PoolSizes();
+        const auto pivot = static_cast<std::size_t>(
+            std::ranges::min_element(sizes) - sizes.begin());
 
-        auto lambda = [&]<std::size_t I>(std::size_t index) {
+        auto lambda = [&]<std::size_t I>(const std::size_t index) {
             if (I == index)
             {
-                EachFrom<I>(std::forward<Func>(func));
+                EachFrom<I>(
+                    func, std::make_index_sequence<sizeof...(Components)>{});
                 return true;
             }
             return false;
         };
 
         [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-            (lambda.template operator()<Is>(pivotIndex) || ...);
+            (lambda.template operator()<Is>(pivot) || ...);
         }(std::make_index_sequence<sizeof...(Components)>{});
     }
 
@@ -197,6 +155,6 @@ namespace libecs::core::view
         if (!HasAllPools())
             return 0;
 
-        return SmallestPoolEntities().size();
+        return std::ranges::min(PoolSizes());
     }
 }
