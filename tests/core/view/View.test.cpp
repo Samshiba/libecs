@@ -373,3 +373,114 @@ TEST_SUITE("View modification during Each")
         }
     }
 }
+
+
+namespace
+{
+    struct HealthComponent
+    {
+        int value;
+
+        explicit HealthComponent(int value)
+            : value(value)
+        {
+        }
+    };
+}
+
+TEST_SUITE("View pivot selection")
+{
+    // Each() turns the runtime index of the smallest pool into a template
+    // parameter: check that every possible pivot position works
+    TEST_CASE("Three components, the smallest pool at every position")
+    {
+        Registry registry;
+
+        // Pool sizes: the "small" component is on 1 entity out of 5, the
+        // others on 1 out of 2 and on every entity
+        std::size_t positionEvery = 1;
+        std::size_t velocityEvery = 1;
+        std::size_t healthEvery = 1;
+
+        SUBCASE("pivot is the first pool (Position)")
+        {
+            positionEvery = 5;
+            velocityEvery = 2;
+        }
+        SUBCASE("pivot is the second pool (Velocity)")
+        {
+            velocityEvery = 5;
+            healthEvery = 2;
+        }
+        SUBCASE("pivot is the third pool (Health)")
+        {
+            healthEvery = 5;
+            positionEvery = 2;
+        }
+
+        std::vector<Entity> expected;
+
+        for (std::size_t i = 0; i < ENTITY_COUNT; ++i)
+        {
+            const Entity entity = registry.CreateEntity();
+            const bool hasPosition = i % positionEvery == 0;
+            const bool hasVelocity = i % velocityEvery == 0;
+            const bool hasHealth = i % healthEvery == 0;
+
+            if (hasPosition)
+                registry.EmplaceComponent<PositionComponent>(entity, 0.0f,
+                    0.0f);
+            if (hasVelocity)
+                registry.EmplaceComponent<VelocityComponent>(entity, 1.0f,
+                    2.0f);
+            if (hasHealth)
+                registry.EmplaceComponent<HealthComponent>(entity,
+                    static_cast<int>(i));
+
+            if (hasPosition && hasVelocity && hasHealth)
+                expected.push_back(entity);
+        }
+
+        REQUIRE(!expected.empty());
+
+        std::map<Entity, int> visits;
+        registry.GetView<PositionComponent, VelocityComponent,
+                         HealthComponent>().Each(
+            [&](Entity entity, PositionComponent& position,
+                VelocityComponent& velocity, HealthComponent& health) {
+                ++visits[entity];
+
+                // Each reference must belong to the visited entity
+                CHECK(health.value == static_cast<int>(
+                    libecs::core::GetEntityIndex(entity)));
+
+                position.x += velocity.vx;
+                health.value = -1;
+            });
+
+        CheckVisitedOnce(visits, expected);
+
+        for (const Entity entity : expected)
+        {
+            CHECK(registry.GetComponent<PositionComponent>(entity).x == 1.0f);
+            CHECK(registry.GetComponent<HealthComponent>(entity).value == -1);
+        }
+    }
+
+    TEST_CASE("Single component view")
+    {
+        Registry registry;
+        const std::vector<Entity> entities = CreateEntities(registry);
+
+        std::map<Entity, int> visits;
+        registry.GetView<PositionComponent>().Each(
+            [&](Entity entity, PositionComponent& position) {
+                ++visits[entity];
+                position.y = 5.0f;
+            });
+
+        CheckVisitedOnce(visits, entities);
+        CHECK(registry.GetComponent<PositionComponent>(entities.front()).y ==
+            5.0f);
+    }
+}

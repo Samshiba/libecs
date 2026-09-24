@@ -153,4 +153,86 @@ TEST_SUITE("SparseSet Core Mechanics")
         CHECK(entities[1] == e2);
         CHECK(entities[2] == e3);
     }
+
+    TEST_CASE("Find")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e1 = libecs::core::CreateEntity(1, 0);
+        libecs::core::Entity e2 = libecs::core::CreateEntity(2, 0);
+
+        ints.Insert(e1, 100);
+
+        SUBCASE("present entity returns its component")
+        {
+            int* value = ints.Find(e1);
+            REQUIRE(value != nullptr);
+            CHECK(*value == 100);
+
+            *value = 150;
+            CHECK(ints.Get(e1) == 150);
+        }
+
+        SUBCASE("absent entity in an existing page returns nullptr")
+        {
+            CHECK(ints.Find(e2) == nullptr);
+        }
+
+        SUBCASE("entity in a page that doesn't exist returns nullptr")
+        {
+            CHECK(ints.Find(libecs::core::CreateEntity(100000, 0)) == nullptr);
+        }
+
+        SUBCASE("stale handle (same index, other version) returns nullptr")
+        {
+            CHECK(ints.Find(libecs::core::CreateEntity(1, 1)) == nullptr);
+        }
+
+        SUBCASE("removed entity returns nullptr")
+        {
+            ints.Remove(e1);
+            CHECK(ints.Find(e1) == nullptr);
+        }
+
+        SUBCASE("const version")
+        {
+            const auto& constInts = ints;
+            REQUIRE(constInts.Find(e1) != nullptr);
+            CHECK(*constInts.Find(e1) == 100);
+            CHECK(constInts.Find(e2) == nullptr);
+        }
+    }
+
+    TEST_CASE("GetByDenseIndex matches GetEntities order")
+    {
+        libecs::core::SparseSet<int> ints;
+        libecs::core::Entity e1 = libecs::core::CreateEntity(1, 0);
+        libecs::core::Entity e2 = libecs::core::CreateEntity(2, 0);
+        libecs::core::Entity e3 = libecs::core::CreateEntity(3, 0);
+
+        ints.Insert(e1, 100);
+        ints.Insert(e2, 200);
+        ints.Insert(e3, 300);
+
+        CHECK(ints.GetByDenseIndex(0) == 100);
+        CHECK(ints.GetByDenseIndex(1) == 200);
+        CHECK(ints.GetByDenseIndex(2) == 300);
+
+        // Swap and pop: e3 (last) moves into e1's slot
+        ints.Remove(e1);
+
+        REQUIRE(ints.Size() == 2);
+        CHECK(ints.GetEntities()[0] == e3);
+        CHECK(ints.GetByDenseIndex(0) == 300);
+        CHECK(ints.GetByDenseIndex(1) == 200);
+
+        // Dense index and entity lookups reach the same component
+        for (std::size_t i = 0; i < ints.Size(); ++i)
+        {
+            CHECK(&ints.GetByDenseIndex(i) ==
+                &ints.Get(ints.GetEntities()[i]));
+        }
+
+        ints.GetByDenseIndex(1) = 250;
+        CHECK(ints.Get(e2) == 250);
+    }
 }
