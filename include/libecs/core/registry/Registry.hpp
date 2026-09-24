@@ -13,6 +13,7 @@
 #include <libecs/core/SparseSet.hpp>
 #include <libecs/core/registry/IPool.hpp>
 #include <libecs/core/registry/TypeId.hpp>
+#include <libecs/core/view/View.hpp>
 
 namespace libecs::core::registry
 {
@@ -61,6 +62,9 @@ namespace libecs::core::registry
 
         template <typename Component>
         [[nodiscard]] const Component* TryGetComponent(Entity entity) const;
+
+        template <typename... Components>
+        [[nodiscard]] view::View<Components...> GetView();
     };
 
     template <typename Component>
@@ -175,5 +179,11 @@ namespace libecs::core::registry
 
         const auto* pool = GetPool<Component>();
         return pool && pool->Contains(entity) ? &pool->Get(entity) : nullptr;
+    }
+
+    template <typename... Components>
+    view::View<Components...> Registry::GetView()
+    {
+        return view::View<Components...>(GetPool<Components>()...);
     }
 }

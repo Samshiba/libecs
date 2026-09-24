@@ -8,20 +8,14 @@
 
 #include <libecs/memory/LinearAllocator.hpp>
 
-#ifdef LIBECS_PLATFORM_WINDOWS
-#include <windows.h>
-#include <memoryapi.h>
-#else
-#error "LinearAllocator is currently only implemented for Windows (mmap needed for POSIX)."
-#endif
+#include "VirtualMemory.hpp"
 
 namespace libecs::memory
 {
     LinearAllocator::LinearAllocator(std::size_t totalSize)
         : totalSize_(totalSize)
     {
-        start_ = VirtualAlloc(nullptr, totalSize,
-                              MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+        start_ = detail::AllocatePages(totalSize_);
 
         if (!start_)
         {
@@ -31,10 +25,7 @@ namespace libecs::memory
 
     LinearAllocator::~LinearAllocator()
     {
-        if (start_)
-        {
-            VirtualFree(start_, 0, MEM_RELEASE);
-        }
+        detail::FreePages(start_, totalSize_);
     }
 
     void* LinearAllocator::Allocate(std::size_t size, std::size_t alignment)

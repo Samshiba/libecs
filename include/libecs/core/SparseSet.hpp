@@ -10,6 +10,7 @@
 #include <memory>
 #include <cassert>
 #include <utility>
+#include <span>
 
 #include <libecs/core/Entity.hpp>
 #include <libecs/core/registry/IPool.hpp>
@@ -48,6 +49,8 @@ namespace libecs::core
         void EntityDestroyed(Entity entity) override;
 
         [[nodiscard]] std::size_t Size() const;
+
+        [[nodiscard]] std::span<const Entity> GetEntities() const;
 
     private:
         std::vector<Component> denseComponents_;
@@ -168,5 +171,12 @@ namespace libecs::core
     std::size_t SparseSet<Component>::Size() const
     {
         return denseComponents_.size();
+    }
+
+    template <typename Component>
+    std::span<const Entity> SparseSet<Component>::GetEntities() const
+    {
+        return { denseEntities_.data(),
+                 denseEntities_.size() };
     }
 }

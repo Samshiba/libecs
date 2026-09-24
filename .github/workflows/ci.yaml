@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+# checks: write is required by dorny/test-reporter to publish the test report
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.toolchain.name }} / ${{ matrix.config }}
+    runs-on: ${{ matrix.toolchain.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [ Debug, Release ]
+        toolchain:
+          - { name: MSVC, os: windows-latest, cxx: cl }
+          - { name: GCC, os: ubuntu-latest, cxx: g++ }
+          - { name: Clang, os: ubuntu-latest, cxx: clang++ }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }}
+          -DLIBECS_BUILD_BENCHMARKS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      # doctest's own JUnit reporter lists every test case
+      # (ctest --output-junit would only see one test: the whole executable)
+      # bash on every OS (Git Bash on Windows) so one script fits all. Not used
+      # for Configure/Build: Git Bash's own link.exe can shadow MSVC's linker
+      - name: Test
+        shell: bash
+        run: ./build/bin/libecs_tests --reporters=junit --out=test-results.xml
+
+      - name: Publish test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Tests (${{ matrix.toolchain.name }} / ${{ matrix.config }})
+          path: test-results.xml
+          reporter: java-junit
+
+      # The benchmark prints a Markdown table: append it to the job summary
+      - name: Run benchmark
+        if: matrix.config == 'Release'
+        shell: bash
+        run: |
+          ./build/bin/libecs_bench | tee benchmark-results.md
+          {
+            echo "## Benchmark (${{ matrix.toolchain.name }} / ${{ matrix.config }})"
+            echo
+            cat benchmark-results.md
+            echo
+            echo "> Shared CI runners are noisy: compare rows within a run, not across runs."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test and benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.toolchain.name }}-${{ matrix.config }}
+          path: |
+            test-results.xml
+            benchmark-results.md
+          if-no-files-found: warn
+          retention-days: 14

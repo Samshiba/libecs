@@ -1,22 +1,22 @@
 # tests/CMakeLists.txt
 
-project(Tests)
-
-add_executable(Tests
+add_executable(libecs_tests
         "memory/Allocator.test.cpp"
         "core/Entity.test.cpp"
         "core/SparseSet.test.cpp"
         "core/registry/TypeId.test.cpp"
         "core/registry/Registry.test.cpp"
+        "core/view/View.test.cpp"
 )
 
-target_include_directories(Tests
-        PRIVATE
-        "${CMAKE_SOURCE_DIR}/vendor/doctest"
+# SYSTEM: don't report warnings coming from the vendored doctest header
+target_include_directories(libecs_tests
+        SYSTEM PRIVATE
+        "${PROJECT_SOURCE_DIR}/vendor/doctest"
 )
 
-target_link_libraries(Tests PRIVATE libecs)
+target_link_libraries(libecs_tests PRIVATE libecs::libecs)
 
-target_compile_options(Tests PRIVATE ${LIBECS_COMPILE_OPTIONS})
+target_compile_options(libecs_tests PRIVATE ${LIBECS_COMPILE_OPTIONS})
 
-add_test(NAME LibecsTests COMMAND Tests)
+add_test(NAME libecs_tests COMMAND libecs_tests)
