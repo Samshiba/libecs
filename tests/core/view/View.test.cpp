@@ -4,8 +4,10 @@
 //
 
 #include <doctest.h>
+#include <iterator>
 #include <map>
 #include <type_traits>
+#include <ranges>
 #include <vector>
 
 #include <libecs/core/registry/Registry.hpp>
@@ -617,5 +619,177 @@ TEST_SUITE("Read-only views")
 
         CHECK(visits == 0);
         CHECK(constRegistry.GetView<const HealthComponent>().MaxSize() == 0);
+    }
+}
+
+
+TEST_SUITE("Range-based for over views")
+{
+    using MoveView = libecs::core::view::View<PositionComponent,
+                                              VelocityComponent>;
+    using ReadOnlyView = libecs::core::view::View<const PositionComponent,
+                                                  VelocityComponent>;
+
+    // What <ranges> requires: fails with the missing requirement if not met
+    static_assert(std::input_iterator<MoveView::ViewIterator>);
+    static_assert(std::sentinel_for<std::default_sentinel_t,
+                                    MoveView::ViewIterator>);
+    static_assert(std::ranges::input_range<MoveView>);
+    static_assert(std::ranges::input_range<ReadOnlyView>);
+
+    TEST_CASE("Visits the same entities as Each")
+    {
+        Registry registry;
+        CreateEntities(registry, 3);
+
+        std::map<Entity, int> eachVisits;
+        registry.GetView<PositionComponent, VelocityComponent>().Each(
+            [&](Entity entity, PositionComponent&, VelocityComponent&) {
+                ++eachVisits[entity];
+            });
+
+        std::map<Entity, int> loopVisits;
+        for (auto [entity, position, velocity] :
+             registry.GetView<PositionComponent, VelocityComponent>())
+        {
+            ++loopVisits[entity];
+        }
+
+        REQUIRE(!eachVisits.empty());
+        CHECK(loopVisits == eachVisits);
+    }
+
+    TEST_CASE("Skips entities of the iterated pool that don't match")
+    {
+        // Position is the smallest pool (3 vs 4), and its last entity has no
+        // Velocity: begin() must skip it, and so must operator++ for others
+        Registry registry;
+        std::vector<Entity> entities;
+        for (int i = 0; i < 5; ++i)
+            entities.push_back(registry.CreateEntity());
+
+        for (int i : { 0, 1, 2 })
+            registry.EmplaceComponent<PositionComponent>(entities[i], 0.0f,
+                0.0f);
+        for (int i : { 0, 1, 3, 4 })
+            registry.EmplaceComponent<VelocityComponent>(entities[i], 1.0f,
+                1.0f);
+
+        std::map<Entity, int> visits;
+        for (auto [entity, position, velocity] :
+             registry.GetView<PositionComponent, VelocityComponent>())
+        {
+            ++visits[entity];
+        }
+
+        CheckVisitedOnce(visits, { entities[0], entities[1] });
+    }
+
+    TEST_CASE("Structured bindings are references to the stored components")
+    {
+        // `auto [...]` copies the tuple, but its elements are references
+        Registry registry;
+        const std::vector<Entity> entities = CreateEntities(registry);
+
+        for (auto [entity, position, velocity] :
+             registry.GetView<PositionComponent, VelocityComponent>())
+        {
+            static_assert(std::is_same_v<decltype(position),
+                                         PositionComponent&>);
+            position.x += velocity.vx;
+        }
+
+        for (const Entity entity : entities)
+        {
+            CHECK(registry.GetComponent<PositionComponent>(entity).x == 1.0f);
+        }
+    }
+
+    TEST_CASE("Const components are bound as const references")
+    {
+        Registry registry;
+        CreateEntities(registry);
+
+        std::size_t visits = 0;
+        for (auto [entity, position, velocity] :
+             registry.GetView<const PositionComponent, VelocityComponent>())
+        {
+            static_assert(std::is_same_v<decltype(position),
+                                         const PositionComponent&>);
+            static_assert(std::is_same_v<decltype(velocity),
+                                         VelocityComponent&>);
+            velocity.vx = position.x + 3.0f;
+            ++visits;
+        }
+
+        CHECK(visits == ENTITY_COUNT);
+    }
+
+    TEST_CASE("Empty views never enter the loop")
+    {
+        Registry registry;
+
+        SUBCASE("a component type was never added")
+        {
+            CreateEntities(registry);
+        }
+        SUBCASE("the pools exist but are empty")
+        {
+            const std::vector<Entity> entities = CreateEntities(registry);
+            for (const Entity entity : entities)
+                registry.EmplaceComponent<HealthComponent>(entity, 100);
+            for (const Entity entity : entities)
+                registry.DestroyEntity(entity);
+        }
+
+        // HealthComponent is never added in the first subcase
+        std::size_t visits = 0;
+        for ([[maybe_unused]] auto components :
+             registry.GetView<PositionComponent, HealthComponent>())
+        {
+            ++visits;
+        }
+
+        CHECK(visits == 0);
+        CHECK(registry.GetView<PositionComponent, HealthComponent>().begin()
+            == std::default_sentinel);
+    }
+
+    TEST_CASE("Destroying the current entity in the loop visits every entity once")
+    {
+        Registry registry;
+        const std::vector<Entity> entities = CreateEntities(registry);
+
+        std::map<Entity, int> visits;
+        for (auto [entity, position, velocity] :
+             registry.GetView<PositionComponent, VelocityComponent>())
+        {
+            ++visits[entity];
+
+            if (libecs::core::GetEntityIndex(entity) % 4 == 0)
+            {
+                registry.DestroyEntity(entity);
+            }
+        }
+
+        CheckVisitedOnce(visits, entities);
+    }
+
+    TEST_CASE("Works with <ranges> algorithms")
+    {
+        Registry registry;
+        CreateEntities(registry, 2);
+
+        auto view = registry.GetView<PositionComponent, VelocityComponent>();
+
+        CHECK(std::ranges::distance(view) ==
+            static_cast<std::ptrdiff_t>(ENTITY_COUNT / 2));
+
+        const auto evenIndices = std::ranges::count_if(view,
+            [](const auto& components) {
+                return libecs::core::GetEntityIndex(
+                    std::get<0>(components)) % 4 == 0;
+            });
+        CHECK(evenIndices == static_cast<std::ptrdiff_t>(ENTITY_COUNT / 4));
     }
 }

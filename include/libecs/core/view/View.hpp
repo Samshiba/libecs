@@ -37,9 +37,17 @@ namespace libecs::core::view
 
         template <typename Component>
             requires (std::is_same_v<Component, Components> || ...)
-        Component& Get(Entity entity);
+        Component& Get(Entity entity)
+        {
+            return std::get<Pool<Component>*>(pools_)->Get(entity);
+        }
 
         [[nodiscard]] std::size_t MaxSize() const;
+
+        // For range loop
+        class ViewIterator;
+        ViewIterator begin();
+        [[nodiscard]] std::default_sentinel_t end() const;
 
     private:
         std::tuple<Pool<Components>*...> pools_;
@@ -145,14 +153,6 @@ namespace libecs::core::view
     }
 
     template <typename... Components>
-    template <typename Component>
-        requires (std::is_same_v<Component, Components> || ...)
-    Component& View<Components...>::Get(Entity entity)
-    {
-        return std::get<Pool<Component>*>(pools_)->Get(entity);
-    }
-
-    template <typename... Components>
     std::size_t View<Components...>::MaxSize() const
     {
         if (!HasAllPools())
@@ -161,3 +161,5 @@ namespace libecs::core::view
         return std::ranges::min(PoolSizes());
     }
 }
+
+#include <libecs/core/view/ViewIterator.hxx>
