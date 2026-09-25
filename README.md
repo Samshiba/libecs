@@ -26,6 +26,8 @@ engine.
   is about 3× faster than a plain array of structs and 4 to 10× faster than a classic
   object-oriented loop on my laptop ( see [Benchmarks](#benchmarks)).
 - **Tested on Windows and Linux** with MSVC, GCC and Clang, on every push.
+- **Also included**: a linear allocator and a pool allocator (`VirtualAlloc` on Windows, `mmap` on
+  POSIX). The ECS itself doesn't use them: `std::vector` already gives it contiguous, growable storage.
 
 ## Example
 
@@ -330,4 +332,5 @@ symbols.
 [MIT](LICENSE) © Jules Genin
 
 [ci-badge]: https://github.com/Samshiba/libecs/actions/workflows/ci.yaml/badge.svg
+
 [ci-runs]: https://github.com/Samshiba/libecs/actions/workflows/ci.yaml
