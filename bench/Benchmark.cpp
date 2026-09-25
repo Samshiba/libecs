@@ -6,7 +6,7 @@
 //   - a plain std::vector of structs
 //   - a classic OOP design (heap objects + virtual Update), in allocation
 //     order and shuffled (objects created/destroyed over time)
-//   - libecs views
+//   - libecs views, through Each and through a range-based for
 //
 // Each case runs twice: with objects holding only the 2 components the update
 // needs, then with "real" objects holding 6 components (the update still only
@@ -259,6 +259,27 @@ namespace
         };
     }
 
+    // Same work with a range-based for: more convenient, but the iterator
+    // can't skip the lookups in the iterated pool like Each does
+    Scenario MakeViewRangeFor(std::string name, bool fat)
+    {
+        auto world = MakeWorld(1, fat);
+
+        return {
+            std::move(name), world->moving,
+            [world] {
+                for (auto [entity, position, velocity] :
+                     world->registry.GetView<Position, Velocity>())
+                {
+                    MoveOne(entity, position, velocity);
+                }
+            },
+            [world] {
+                return world->registry.GetComponent<Position>(world->first).x;
+            }
+        };
+    }
+
     // Same work, but the callback goes through std::function (type erasure):
     // shows what taking the callable as a template parameter buys
     Scenario MakeViewStdFunction(std::string name)
@@ -369,6 +390,7 @@ int main()
     small.push_back(MakeOop<SmallObject>("OOP, allocation order", false));
     small.push_back(MakeOop<SmallObject>("OOP, shuffled", true));
     small.push_back(MakeView("libecs `View<Position, Velocity>`", 1, false));
+    small.push_back(MakeViewRangeFor("libecs view, range-based `for`", false));
     small.push_back(MakeViewStdFunction(
         "libecs view, `std::function` callback"));
     small.push_back(MakeView("libecs view, 10% of entities have a `Velocity`",
@@ -379,6 +401,7 @@ int main()
     fat.push_back(MakeOop<FatObject>("OOP, allocation order", false));
     fat.push_back(MakeOop<FatObject>("OOP, shuffled", true));
     fat.push_back(MakeView("libecs `View<Position, Velocity>`", 1, true));
+    fat.push_back(MakeViewRangeFor("libecs view, range-based `for`", true));
 
     // All scenarios are interleaved together
     std::vector<Scenario*> all;
