@@ -5,6 +5,7 @@
 
 #include <doctest.h>
 #include <map>
+#include <type_traits>
 #include <vector>
 
 #include <libecs/core/registry/Registry.hpp>
@@ -482,5 +483,139 @@ TEST_SUITE("View pivot selection")
         CheckVisitedOnce(visits, entities);
         CHECK(registry.GetComponent<PositionComponent>(entities.front()).y ==
             5.0f);
+    }
+}
+
+
+namespace
+{
+    // True when GetView<Ts...>() compiles on a RegistryT (Registry or
+    // const Registry): lets the tests check what must NOT compile
+    template <typename RegistryT, typename... Ts>
+    concept CanGetView = requires(RegistryT& registry)
+    {
+        registry.template GetView<Ts...>();
+    };
+}
+
+TEST_SUITE("Read-only views")
+{
+    // A registry can give any view, a const registry only read-only ones
+    static_assert(CanGetView<Registry, PositionComponent>);
+    static_assert(CanGetView<Registry, const PositionComponent>);
+    static_assert(CanGetView<const Registry, const PositionComponent>);
+    static_assert(CanGetView<const Registry, const PositionComponent,
+                             const VelocityComponent>);
+    static_assert(!CanGetView<const Registry, PositionComponent>);
+    static_assert(!CanGetView<const Registry, const PositionComponent,
+                              VelocityComponent>);
+
+    TEST_CASE("A const view visits the same entities as a mutable one")
+    {
+        // If GetView forgot remove_const, the const pool would never be
+        // found and this view would silently be empty
+        Registry registry;
+        CreateEntities(registry, 3);
+
+        std::map<Entity, int> mutableVisits;
+        registry.GetView<PositionComponent, VelocityComponent>().Each(
+            [&](Entity entity, PositionComponent&, VelocityComponent&) {
+                ++mutableVisits[entity];
+            });
+
+        std::map<Entity, int> constVisits;
+        registry.GetView<const PositionComponent, VelocityComponent>().Each(
+            [&](Entity entity, const PositionComponent&, VelocityComponent&) {
+                ++constVisits[entity];
+            });
+
+        REQUIRE(!mutableVisits.empty());
+        CHECK(constVisits == mutableVisits);
+    }
+
+    TEST_CASE("Const components are passed as const references")
+    {
+        Registry registry;
+        CreateEntities(registry);
+
+        std::size_t visits = 0;
+        registry.GetView<const PositionComponent, VelocityComponent>().Each(
+            [&](Entity, auto& position, auto& velocity) {
+                static_assert(std::is_same_v<decltype(position),
+                                             const PositionComponent&>);
+                static_assert(std::is_same_v<decltype(velocity),
+                                             VelocityComponent&>);
+
+                // The non-const component stays writable
+                velocity.vx = position.x + 5.0f;
+                ++visits;
+            });
+
+        CHECK(visits == ENTITY_COUNT);
+
+        registry.GetView<VelocityComponent>().Each(
+            [](Entity, const VelocityComponent& velocity) {
+                CHECK(velocity.vx == 5.0f);
+            });
+    }
+
+    TEST_CASE("Get returns a const reference for a const component")
+    {
+        Registry registry;
+        const std::vector<Entity> entities = CreateEntities(registry);
+
+        auto view = registry.GetView<const PositionComponent,
+                                     VelocityComponent>();
+        const Entity entity = entities.front();
+
+        static_assert(std::is_same_v<
+            decltype(view.Get<const PositionComponent>(entity)),
+            const PositionComponent&>);
+        static_assert(std::is_same_v<
+            decltype(view.Get<VelocityComponent>(entity)),
+            VelocityComponent&>);
+
+        CHECK(view.Get<const PositionComponent>(entity).x == 0.0f);
+
+        view.Get<VelocityComponent>(entity).vx = 42.0f;
+        CHECK(registry.GetComponent<VelocityComponent>(entity).vx == 42.0f);
+    }
+
+    TEST_CASE("Views on a const registry")
+    {
+        Registry registry;
+        const std::vector<Entity> entities = CreateEntities(registry, 2);
+        const Registry& constRegistry = registry;
+
+        std::map<Entity, int> visits;
+        constRegistry.GetView<const PositionComponent,
+                              const VelocityComponent>().Each(
+            [&](Entity entity, const PositionComponent&,
+                const VelocityComponent&) {
+                ++visits[entity];
+            });
+
+        CHECK(visits.size() == ENTITY_COUNT / 2);
+        CHECK(constRegistry.GetView<const PositionComponent,
+                                    const VelocityComponent>().MaxSize() ==
+            ENTITY_COUNT / 2);
+    }
+
+    TEST_CASE("Const view of a component type never added is empty")
+    {
+        Registry registry;
+        CreateEntities(registry);
+        const Registry& constRegistry = registry;
+
+        // HealthComponent has no pool yet: const GetPool returns nullptr
+        std::size_t visits = 0;
+        constRegistry.GetView<const PositionComponent,
+                              const HealthComponent>().Each(
+            [&](Entity, const PositionComponent&, const HealthComponent&) {
+                ++visits;
+            });
+
+        CHECK(visits == 0);
+        CHECK(constRegistry.GetView<const HealthComponent>().MaxSize() == 0);
     }
 }

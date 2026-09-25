@@ -8,8 +8,8 @@
 #include <tuple>
 #include <type_traits>
 #include <cassert>
-#include <ranges>
 #include <algorithm>
+#include <array>
 
 #include <libecs/core/SparseSet.hpp>
 
@@ -18,13 +18,17 @@ namespace libecs::core::view
     template <typename... Components>
     class View
     {
-        using Pools = std::tuple<SparseSet<Components>*...>;
+        template <typename T>
+        using Pool
+        = std::conditional_t<std::is_const_v<T>,
+                             const SparseSet<std::remove_const_t<T> >,
+                             SparseSet<T> >;
 
         static_assert(sizeof...(Components) > 0,
                       "View must have at least one component type.");
 
     public:
-        explicit View(SparseSet<Components>*... pools);
+        explicit View(Pool<Components>*... pools);
 
         template <typename Func>
         void Each(Func&& func);
@@ -32,12 +36,13 @@ namespace libecs::core::view
         [[nodiscard]] bool Contains(Entity entity) const;
 
         template <typename Component>
+            requires (std::is_same_v<Component, Components> || ...)
         Component& Get(Entity entity);
 
         [[nodiscard]] std::size_t MaxSize() const;
 
     private:
-        Pools pools_;
+        std::tuple<Pool<Components>*...> pools_;
 
         [[nodiscard]] bool HasAllPools() const;
         [[nodiscard]] std::array<std::size_t, sizeof...(Components)>
@@ -99,7 +104,7 @@ namespace libecs::core::view
     }
 
     template <typename... Components>
-    View<Components...>::View(SparseSet<Components>*... pools)
+    View<Components...>::View(Pool<Components>*... pools)
         : pools_(pools...)
     {
     }
@@ -141,12 +146,10 @@ namespace libecs::core::view
 
     template <typename... Components>
     template <typename Component>
+        requires (std::is_same_v<Component, Components> || ...)
     Component& View<Components...>::Get(Entity entity)
     {
-        static_assert((std::is_same_v<Component, Components> || ...),
-                      "Component must be part of this View");
-
-        return std::get<SparseSet<Component>*>(pools_)->Get(entity);
+        return std::get<Pool<Component>*>(pools_)->Get(entity);
     }
 
     template <typename... Components>

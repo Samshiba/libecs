@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <cassert>
+#include <type_traits>
 
 #include <libecs/core/Entity.hpp>
 #include <libecs/core/SparseSet.hpp>
@@ -65,6 +66,10 @@ namespace libecs::core::registry
 
         template <typename... Components>
         [[nodiscard]] view::View<Components...> GetView();
+
+        template <typename... Components>
+            requires (std::is_const_v<Components> && ...)
+        [[nodiscard]] view::View<Components...> GetView() const;
     };
 
     template <typename Component>
@@ -184,6 +189,15 @@ namespace libecs::core::registry
     template <typename... Components>
     view::View<Components...> Registry::GetView()
     {
-        return view::View<Components...>(GetPool<Components>()...);
+        return view::View<Components...>(
+            GetPool<std::remove_const_t<Components> >()...);
+    }
+
+    template <typename... Components>
+        requires (std::is_const_v<Components> && ...)
+    view::View<Components...> Registry::GetView() const
+    {
+        return view::View<Components...>(
+            GetPool<std::remove_const_t<Components> >()...);
     }
 }
