@@ -68,6 +68,7 @@ target_sources(libecs
         "include/libecs/core/registry/IPool.hpp"
         "include/libecs/core/registry/Registry.hpp"
         "include/libecs/core/view/View.hpp"
+        "include/libecs/core/view/ViewIterator.hxx"
 )
 
 target_include_directories(libecs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")

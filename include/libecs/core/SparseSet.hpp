@@ -45,6 +45,11 @@ namespace libecs::core
         [[nodiscard]] bool Contains(Entity entity) const;
         Component& Get(Entity entity);
         const Component& Get(Entity entity) const;
+        Component* Find(Entity entity);
+        const Component* Find(Entity entity) const;
+
+        Component& GetByDenseIndex(std::size_t index);
+        const Component& GetByDenseIndex(std::size_t index) const;
 
         void EntityDestroyed(Entity entity) override;
 
@@ -128,26 +133,15 @@ namespace libecs::core
     template <typename Component>
     bool SparseSet<Component>::Contains(Entity entity) const
     {
-        auto [pageIndex, offset] = Locate(entity);
-
-        if (pageIndex >= sparse_.size() || sparse_[pageIndex] == nullptr)
-            return false;
-
-        std::size_t denseIndex = (*sparse_[pageIndex])[offset];
-        if (denseIndex >= denseEntities_.size())
-            return false;
-
-        return denseEntities_[denseIndex] == entity;
+        return Find(entity) != nullptr;
     }
 
     template <typename Component>
     Component& SparseSet<Component>::Get(Entity entity)
     {
-        assert(Contains(entity));
-
-        auto [pageIndex, offset] = Locate(entity);
-
-        return denseComponents_[(*sparse_[pageIndex])[offset]];
+        auto* componentPtr = Find(entity);
+        assert(componentPtr);
+        return *componentPtr;
     }
 
     template <typename Component>
@@ -158,6 +152,57 @@ namespace libecs::core
         auto [pageIndex, offset] = Locate(entity);
 
         return denseComponents_[(*sparse_[pageIndex])[offset]];
+    }
+
+    template <typename Component>
+    Component* SparseSet<Component>::Find(Entity entity)
+    {
+        auto [pageIndex, offset] = Locate(entity);
+
+        if (pageIndex >= sparse_.size() || sparse_[pageIndex] == nullptr)
+            return nullptr;
+
+        std::size_t denseIndex = (*sparse_[pageIndex])[offset];
+        if (denseIndex >= denseEntities_.size())
+            return nullptr;
+
+        return denseEntities_[denseIndex] == entity
+            ? &denseComponents_[denseIndex]
+            : nullptr;
+    }
+
+    template <typename Component>
+    const Component* SparseSet<Component>::Find(Entity entity) const
+    {
+        auto [pageIndex, offset] = Locate(entity);
+
+        if (pageIndex >= sparse_.size() || sparse_[pageIndex] == nullptr)
+            return nullptr;
+
+        std::size_t denseIndex = (*sparse_[pageIndex])[offset];
+        if (denseIndex >= denseEntities_.size())
+            return nullptr;
+
+        return denseEntities_[denseIndex] == entity
+            ? &denseComponents_[denseIndex]
+            : nullptr;
+    }
+
+    template <typename Component>
+    Component& SparseSet<Component>::GetByDenseIndex(std::size_t index)
+    {
+        assert(index < denseComponents_.size());
+
+        return denseComponents_[index];
+    }
+
+    template <typename Component>
+    const Component& SparseSet<Component>::GetByDenseIndex(
+        std::size_t index) const
+    {
+        assert(index < denseComponents_.size());
+
+        return denseComponents_[index];
     }
 
     template <typename Component>

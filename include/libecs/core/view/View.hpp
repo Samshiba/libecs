@@ -7,8 +7,9 @@
 
 #include <tuple>
 #include <type_traits>
-#include <span>
 #include <cassert>
+#include <algorithm>
+#include <array>
 
 #include <libecs/core/SparseSet.hpp>
 
@@ -17,13 +18,17 @@ namespace libecs::core::view
     template <typename... Components>
     class View
     {
-        using Pools = std::tuple<SparseSet<Components>*...>;
+        template <typename T>
+        using Pool
+        = std::conditional_t<std::is_const_v<T>,
+                             const SparseSet<std::remove_const_t<T> >,
+                             SparseSet<T> >;
 
         static_assert(sizeof...(Components) > 0,
                       "View must have at least one component type.");
 
     public:
-        explicit View(SparseSet<Components>*... pools);
+        explicit View(Pool<Components>*... pools);
 
         template <typename Func>
         void Each(Func&& func);
@@ -31,15 +36,28 @@ namespace libecs::core::view
         [[nodiscard]] bool Contains(Entity entity) const;
 
         template <typename Component>
-        Component& Get(Entity entity);
+            requires (std::is_same_v<Component, Components> || ...)
+        Component& Get(Entity entity)
+        {
+            return std::get<Pool<Component>*>(pools_)->Get(entity);
+        }
 
         [[nodiscard]] std::size_t MaxSize() const;
 
+        // For range loop
+        class ViewIterator;
+        ViewIterator begin();
+        [[nodiscard]] std::default_sentinel_t end() const;
+
     private:
-        Pools pools_;
+        std::tuple<Pool<Components>*...> pools_;
 
         [[nodiscard]] bool HasAllPools() const;
-        [[nodiscard]] std::span<const Entity> SmallestPoolEntities() const;
+        [[nodiscard]] std::array<std::size_t, sizeof...(Components)>
+        PoolSizes() const;
+
+        template <std::size_t Pivot, std::size_t... Is, typename Func>
+        void EachFrom(Func& func, std::index_sequence<Is...>);
     };
 
     template <typename... Components>
@@ -52,28 +70,49 @@ namespace libecs::core::view
     }
 
     template <typename... Components>
-    std::span<const Entity> View<Components...>::SmallestPoolEntities() const
+    auto View<Components
+        ...>::PoolSizes() const -> std::array<
+        std::size_t, sizeof...(Components)>
     {
         assert(HasAllPools());
 
-        auto result = std::get<0>(pools_)->GetEntities();
-
-        auto func = [&result](auto pool) {
-            if (pool->Size() < result.size())
-            {
-                result = pool->GetEntities();
-            }
-        };
-
-        std::apply(
-            [&](auto*... pool) {
-                (func(pool), ...);
+        return std::apply(
+            [](auto*... pool) {
+                return std::array{ pool->Size()... };
             }, pools_);
-        return result;
     }
 
     template <typename... Components>
-    View<Components...>::View(SparseSet<Components>*... pools)
+    template <std::size_t Pivot, std::size_t... Is, typename Func>
+    void View<Components...>::EachFrom(Func& func, std::index_sequence<Is...>)
+    {
+        const auto entities = std::get<Pivot>(pools_)->GetEntities();
+        for (std::size_t i = entities.size(); i-- > 0;)
+        {
+            const Entity entity = entities[i];
+
+            // Direct ptr for pivot pool or find lookup
+            auto getPtrs = [&]<std::size_t I>() {
+                if constexpr (I == Pivot)
+                    return &std::get<Pivot>(pools_)->GetByDenseIndex(i);
+                else
+                    return std::get<I>(pools_)->Find(entity);
+            };
+
+            // Fold all pools ptrs to func
+            auto process = [&](auto*... ptrs) {
+                if ((ptrs && ...))
+                {
+                    func(entity, *ptrs...);
+                }
+            };
+
+            process(getPtrs.template operator()<Is>()...);
+        }
+    }
+
+    template <typename... Components>
+    View<Components...>::View(Pool<Components>*... pools)
         : pools_(pools...)
     {
     }
@@ -85,17 +124,23 @@ namespace libecs::core::view
         if (!HasAllPools())
             return;
 
-        for (const Entity entity : SmallestPoolEntities())
-        {
-            if (Contains(entity))
+        const auto sizes = PoolSizes();
+        const auto pivot = static_cast<std::size_t>(
+            std::ranges::min_element(sizes) - sizes.begin());
+
+        auto lambda = [&]<std::size_t I>(const std::size_t index) {
+            if (I == index)
             {
-                // Apply func
-                std::apply(
-                    [&](auto*... pool) {
-                        func(entity, pool->Get(entity)...);
-                    }, pools_);
+                EachFrom<I>(
+                    func, std::make_index_sequence<sizeof...(Components)>{});
+                return true;
             }
-        }
+            return false;
+        };
+
+        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            (lambda.template operator()<Is>(pivot) || ...);
+        }(std::make_index_sequence<sizeof...(Components)>{});
     }
 
     template <typename... Components>
@@ -108,21 +153,13 @@ namespace libecs::core::view
     }
 
     template <typename... Components>
-    template <typename Component>
-    Component& View<Components...>::Get(Entity entity)
-    {
-        static_assert((std::is_same_v<Component, Components> || ...),
-                      "Component must be part of this View");
-
-        return std::get<SparseSet<Component>*>(pools_)->Get(entity);
-    }
-
-    template <typename... Components>
     std::size_t View<Components...>::MaxSize() const
     {
         if (!HasAllPools())
             return 0;
 
-        return SmallestPoolEntities().size();
+        return std::ranges::min(PoolSizes());
     }
 }
+
+#include <libecs/core/view/ViewIterator.hxx>
